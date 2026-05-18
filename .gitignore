@@ -1,0 +1,10 @@
+# Xmake
+.xmake/
+build/
+
+# MacOS
+.DS_Store
+
+# VSCode
+.vscode/
+

@@ -1,0 +1,36 @@
+DisableFormat: false
+
+BasedOnStyle: LLVM
+Language: C 
+Standard: Latest
+
+ColumnLimit: 120
+IndentWidth: 4 
+TabWidth: 4
+ContinuationIndentWidth: 4
+MaxEmptyLinesToKeep: 1
+SpacesBeforeTrailingComments: 1
+
+AlignConsecutiveAssignments: Consecutive
+AlignConsecutiveBitFields: Consecutive
+AlignConsecutiveDeclarations: Consecutive
+AlignConsecutiveMacros: Consecutive 
+AlignOperands: AlignAfterOperator
+AllowShortBlocksOnASingleLine: Empty 
+AllowShortFunctionsOnASingleLine: Empty 
+AllowShortIfStatementsOnASingleLine: WithoutElse 
+BreakAdjacentStringLiterals: false 
+BreakAfterAttributes: Leave
+BreakBeforeBinaryOperators: All 
+IndentPPDirectives: BeforeHash
+KeepEmptyLines:
+  AtEndOfFile:    false
+  AtStartOfBlock: false
+  AtStartOfFile:  true
+PointerAlignment: Left 
+RemoveEmptyLinesInUnwrappedLines: true 
+SortIncludes:
+  Enabled:         true
+  IgnoreCase:      false
+  IgnoreExtension: true 
+
