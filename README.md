@@ -33,16 +33,7 @@ int main(int argc, char* argv[]) {
 
 ## Integration
 
-If you use [Xmake](https://xmake.io) for building, you can add the dependency in `xmake.lua`:
-
-```lua
-add_requires("stv")
-
-target("test")
-    add_packages("stv")
-```
-
-> You can also directly copy [stv.h](./include/stv.h) into your project and include it.
+Just copy [stv.h](./include/stv.h) into your project and include it.
 
 Then define `LIB_STV_IMPL` before `#include` in **one** source file (e.g., `stv.c`):
 

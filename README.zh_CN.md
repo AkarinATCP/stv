@@ -32,16 +32,7 @@ int main(int argc, char* argv[]) {
 
 ## 集成方式
 
-如果使用 [Xmake](https://xmake.io) 构建，可以在 `xmake.lua` 中添加依赖：
-
-```lua
-add_requires("stv")
-
-target("test")
-    add_packages("stv")
-```
-
-> 也可以选择直接将 [stv.h](./include/stv.h) 复制到你的工程中并包含它。
+直接将 [stv.h](./include/stv.h) 复制到你的工程中并包含它。
 
 然后在 **某一个** 源文件（如 `stv.c`）的 `#include` 前定义 `LIB_STV_IMPL`：
 
