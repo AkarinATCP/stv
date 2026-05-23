@@ -221,6 +221,96 @@ void test_stv_search_empty_pat(void) {
 }
 
 /* ========================================================================== */
+/*  Reverse search functions                                                  */
+/* ========================================================================== */
+
+void test_stv_rev_search_found(void) {
+    strview text = stv_new("hello world hello");
+    strview pat  = stv_new("hello");
+    size_t  pos  = stv_rev_search(text, pat);
+    TEST_ASSERT_EQUAL_size_t(12, pos);
+}
+
+void test_stv_rev_search_not_found(void) {
+    strview text = stv_new("abc");
+    strview pat  = stv_new("xyz");
+    TEST_ASSERT_EQUAL_size_t(stv_npos, stv_rev_search(text, pat));
+}
+
+void test_stv_rev_search_empty_pattern(void) {
+    strview text = stv_new("abc");
+    strview pat  = stv_nullstv;
+    TEST_ASSERT_EQUAL_size_t(3, stv_rev_search(text, pat));
+}
+
+void test_stv_rev_search_longer_pat(void) {
+    strview text = stv_new("ab");
+    strview pat  = stv_new("abc");
+    TEST_ASSERT_EQUAL_size_t(stv_npos, stv_rev_search(text, pat));
+}
+
+void test_stv_rev_search_single_char(void) {
+    strview text = stv_new("aaaa");
+    strview pat  = stv_new("a");
+    TEST_ASSERT_EQUAL_size_t(3, stv_rev_search(text, pat));
+}
+
+void test_stv_rev_naive_search_found(void) {
+    strview text = stv_new("ababa");
+    strview pat  = stv_new("aba");
+    TEST_ASSERT_EQUAL_size_t(2, stv_rev_naiveSearch(text, pat));
+}
+
+void test_stv_rev_naive_search_not_found(void) {
+    strview text = stv_new("xyz");
+    strview pat  = stv_new("abc");
+    TEST_ASSERT_EQUAL_size_t(stv_npos, stv_rev_naiveSearch(text, pat));
+}
+
+void test_stv_rev_naive_search_empty_pattern(void) {
+    strview text = stv_new("abc");
+    strview pat  = stv_nullstv;
+    TEST_ASSERT_EQUAL_size_t(3, stv_rev_naiveSearch(text, pat));
+}
+
+void test_stv_rev_sunday_search_found(void) {
+    strview text = stv_new("find the needle, then another needle here");
+    strview pat  = stv_new("needle");
+    size_t  pos  = stv_rev_sundaySearch(text, pat);
+    TEST_ASSERT_EQUAL_size_t(30, pos);
+}
+
+void test_stv_rev_sunday_search_not_found(void) {
+    strview text = stv_new("abcde");
+    strview pat  = stv_new("xyz");
+    TEST_ASSERT_EQUAL_size_t(stv_npos, stv_rev_sundaySearch(text, pat));
+}
+
+void test_stv_rev_sunday_search_empty_pattern(void) {
+    strview text = stv_new("abc");
+    strview pat  = stv_nullstv;
+    TEST_ASSERT_EQUAL_size_t(3, stv_rev_sundaySearch(text, pat));
+}
+
+void test_stv_rev_search_empty_text(void) {
+    strview text = stv_nullstv;
+    strview pat  = stv_new("x");
+    TEST_ASSERT_EQUAL_size_t(stv_npos, stv_rev_search(text, pat));
+}
+
+void test_stv_rev_naive_empty_text(void) {
+    strview text = stv_nullstv;
+    strview pat  = stv_new("x");
+    TEST_ASSERT_EQUAL_size_t(stv_npos, stv_rev_naiveSearch(text, pat));
+}
+
+void test_stv_rev_sunday_empty_text(void) {
+    strview text = stv_nullstv;
+    strview pat  = stv_new("x");
+    TEST_ASSERT_EQUAL_size_t(stv_npos, stv_rev_sundaySearch(text, pat));
+}
+
+/* ========================================================================== */
 /*  First/Last character queries                                              */
 /* ========================================================================== */
 
@@ -507,6 +597,22 @@ int main(void) {
     RUN_TEST(test_stv_search_uses_sunday);
     RUN_TEST(test_stv_search_fallback_naive);
     RUN_TEST(test_stv_search_empty_pat);
+
+    /* reverse search functions */
+    RUN_TEST(test_stv_rev_search_found);
+    RUN_TEST(test_stv_rev_search_not_found);
+    RUN_TEST(test_stv_rev_search_empty_pattern);
+    RUN_TEST(test_stv_rev_search_longer_pat);
+    RUN_TEST(test_stv_rev_search_single_char);
+    RUN_TEST(test_stv_rev_naive_search_found);
+    RUN_TEST(test_stv_rev_naive_search_not_found);
+    RUN_TEST(test_stv_rev_naive_search_empty_pattern);
+    RUN_TEST(test_stv_rev_sunday_search_found);
+    RUN_TEST(test_stv_rev_sunday_search_not_found);
+    RUN_TEST(test_stv_rev_sunday_search_empty_pattern);
+    RUN_TEST(test_stv_rev_search_empty_text);
+    RUN_TEST(test_stv_rev_naive_empty_text);
+    RUN_TEST(test_stv_rev_sunday_empty_text);
 
     /* first/last character queries */
     RUN_TEST(test_stv_first_char_found);
