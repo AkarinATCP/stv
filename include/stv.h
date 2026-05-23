@@ -87,7 +87,7 @@ LIB_STV_FN strview stv_new(const char* c_str);
 /**
  * @brief Create a string view from a character sequence, stopping at a specified terminator or maximum length
  *
- * @param c_str Source string pointer, may be NULL
+ * @param str Source string pointer, may be NULL
  * @param endchar Terminator character (stop before this character; the character itself is not included)
  * @param maxlen Maximum number of bytes to scan
  * @return A new strview; returns an empty view if c_str is NULL
@@ -160,6 +160,40 @@ LIB_STV_FN size_t stv_naiveSearch(strview stv_text, strview stv_pat);
  * @return Start position of the first match; returns 0 if stv_pat is empty, or stv_npos if not found
  */
 LIB_STV_FN size_t stv_sundaySearch(strview stv_text, strview stv_pat);
+
+/**
+ * @brief Search for the last occurrence of a substring within a text view (automatic algorithm selection)
+ *
+ * Uses naive search when the pattern length is <= 4, otherwise uses Sunday search.
+ * The search proceeds from right to left.
+ *
+ * @param stv_text The text view to search in
+ * @param stv_pat The pattern view to search for
+ * @return Start position of the last match; returns stv_text.len if stv_pat is empty, or stv_npos if not found
+ */
+LIB_STV_FN size_t stv_rev_search(strview stv_text, strview stv_pat);
+
+/**
+ * @brief Naive last-occurrence string search (suitable for short patterns)
+ *
+ * Searches from the end of the text towards the beginning.
+ *
+ * @param stv_text The text view to search in
+ * @param stv_pat The pattern view to search for
+ * @return Start position of the last match; returns stv_text.len if stv_pat is empty, or stv_npos if not found
+ */
+LIB_STV_FN size_t stv_rev_naiveSearch(strview stv_text, strview stv_pat);
+
+/**
+ * @brief Sunday last-occurrence string search (suitable for longer patterns)
+ *
+ * Adapts the Sunday algorithm to search from right to left.
+ *
+ * @param stv_text The text view to search in
+ * @param stv_pat The pattern view to search for
+ * @return Start position of the last match; returns stv_text.len if stv_pat is empty, or stv_npos if not found
+ */
+LIB_STV_FN size_t stv_rev_sundaySearch(strview stv_text, strview stv_pat);
 
 /**
  * @brief Find the first occurrence of a character in the view
@@ -460,15 +494,16 @@ LIB_STV_FN size_t stv_naiveSearch(strview stv_text, strview stv_pat) {
         return stv_npos;
     }
 
-    for (size_t pos = 0; pos <= (stv_text.len - stv_pat.len); pos++) {
-        size_t idx;
-        for (idx = 0; idx < stv_pat.len; idx++) {
-            if (stv_text.data[pos + idx] != stv_pat.data[idx]) {
+    const size_t end_idx = (stv_text.len - stv_pat.len);
+    for (size_t idx = 0; idx <= end_idx; idx++) {
+        size_t i;
+        for (i = 0; i < stv_pat.len; i++) {
+            if (stv_text.data[idx + i] != stv_pat.data[i]) {
                 break;
             }
         }
-        if (idx == stv_pat.len) {
-            return pos;
+        if (i == stv_pat.len) {
+            return idx;
         }
     }
     return stv_npos;
@@ -482,31 +517,105 @@ LIB_STV_FN size_t stv_sundaySearch(strview stv_text, strview stv_pat) {
         return stv_npos;
     }
 
+    size_t txl = stv_text.len, pal = stv_pat.len;
     size_t shift[UCHAR_MAX + 1];
-    for (size_t i = 0; i < (UCHAR_MAX + 1); i++) {
-        shift[i] = stv_pat.len + 1;
+    for (size_t i = 0; i <= UCHAR_MAX; i++) {
+        shift[i] = pal + 1;
     }
-    for (size_t i = 0; i < stv_pat.len; i++) {
-        shift[(unsigned char)stv_pat.data[i]] = stv_pat.len - i;
+    for (size_t i = 0; i < pal; i++) {
+        shift[(unsigned char)stv_pat.data[i]] = pal - i;
     }
-    size_t pos = 0;
-    while (pos <= (stv_text.len - stv_pat.len)) {
-        size_t idx;
-        for (idx = 0; idx < stv_pat.len; idx++) {
-            if (stv_text.data[pos + idx] != stv_pat.data[idx]) {
-                if (pos + stv_pat.len >= stv_text.len) {
+
+    size_t idx = 0;
+    while (true) {
+        size_t i;
+        for (i = 0; i < pal; i++) {
+            if (stv_text.data[idx + i] != stv_pat.data[i]) {
+                if (idx + pal >= txl) {
                     return stv_npos;
                 }
-                const unsigned char next_char = (unsigned char)stv_text.data[pos + stv_pat.len];
-                pos += shift[next_char];
+                const unsigned char next_char = stv_text.data[idx + pal];
+                const size_t        skip      = shift[next_char];
+                idx += skip;
                 break;
             }
         }
-        if (idx == stv_pat.len) {
-            return pos;
+        if (i == stv_pat.len) {
+            return idx;
+        }
+    }
+}
+
+LIB_STV_FN size_t stv_rev_search(strview stv_text, strview stv_pat) {
+    if (stv_pat.len > 4) {
+        return stv_rev_sundaySearch(stv_text, stv_pat);
+    } else {
+        return stv_rev_naiveSearch(stv_text, stv_pat);
+    }
+}
+
+LIB_STV_FN size_t stv_rev_naiveSearch(strview stv_text, strview stv_pat) {
+    if (stv_empty(stv_pat)) {
+        return stv_text.len;
+    }
+    if (stv_empty(stv_text) || stv_text.len < stv_pat.len) {
+        return stv_npos;
+    }
+
+    const size_t begin_idx = (stv_text.len - stv_pat.len + 1);
+    for (size_t idx = begin_idx; idx > 0; idx--) {
+        size_t i;
+        for (i = 0; i < stv_pat.len; i++) {
+            if (stv_text.data[idx - 1 + i] != stv_pat.data[i]) {
+                break;
+            }
+        }
+        if (i == stv_pat.len) {
+            return idx - 1;
         }
     }
     return stv_npos;
+}
+
+LIB_STV_FN size_t stv_rev_sundaySearch(strview stv_text, strview stv_pat) {
+    if (stv_empty(stv_pat)) {
+        return stv_text.len;
+    }
+    if (stv_empty(stv_text) || stv_text.len < stv_pat.len) {
+        return stv_npos;
+    }
+
+    size_t txl = stv_text.len, pal = stv_pat.len;
+    size_t shift[UCHAR_MAX + 1];
+    for (size_t i = 0; i <= UCHAR_MAX; i++) {
+        shift[i] = pal + 1;
+    }
+    for (size_t i = pal; i > 0; i--) {
+        unsigned char c = (unsigned char)stv_pat.data[i - 1];
+        shift[c]        = i;
+    }
+
+    size_t idx = txl - pal;
+    while (true) {
+        size_t i;
+        for (i = 0; i < pal; i++) {
+            if (stv_text.data[idx + i] != stv_pat.data[i]) {
+                if (idx == 0) {
+                    return stv_npos;
+                }
+                const unsigned char prev_char = stv_text.data[idx - 1];
+                const size_t        skip      = shift[prev_char];
+                if (idx < skip) {
+                    return stv_npos;
+                }
+                idx -= skip;
+                break;
+            }
+        }
+        if (i == pal) {
+            return idx;
+        }
+    }
 }
 
 LIB_STV_FN size_t stv_firstChar(strview stv, const char ch) {
