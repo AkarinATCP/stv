@@ -84,17 +84,20 @@ Or define `LIB_STV_STATIC_INLINE_IMPL` before each inclusion to make all functio
 | `stv_end`                     | (Macro) Predefined end position constant for slicing.                     |
 
 ### Searching
-| Function                      | Description                                                             |
-|-------------------------------|-------------------------------------------------------------------------|
-| `stv_search(text, pat)`       | Search for pat in text and return the position of the first occurrence. |
-| `stv_naiveSearch(text, pat)`  | Naive search algorithm implementation.                                  |
-| `stv_sundaySearch(text, pat)` | Sunday search algorithm implementation.                                 |
-| `stv_firstChar(stv, ch)`      | Position of the first character ch.                                     |
-| `stv_lastChar(stv, ch)`       | Position of the last character ch.                                      |
-| `stv_firstNotChar(stv, ch)`   | Position of the first character not equal to ch.                        |
-| `stv_lastNotChar(stv, ch)`    | Position of the last character not equal to ch.                         |
-| `stv_firstDiff(stv_a, stv_b)` | Position of the first differing character between two views.            |
-| `stv_lastDiff(stv_a, stv_b)`  | Position of the last differing character between two views.             |
+| Function                          | Description                                                                    |
+|-----------------------------------|--------------------------------------------------------------------------------|
+| `stv_search(text, pat)`           | Search for pat in text and return the position of the first occurrence.        |
+| `stv_naiveSearch(text, pat)`      | Naive search algorithm implementation.                                         |
+| `stv_sundaySearch(text, pat)`     | Sunday search algorithm implementation.                                        |
+| `stv_rev_search(text, pat)`       | Reverse search for pat in text and return the position of the last occurrence. |
+| `stv_rev_naiveSearch(text, pat)`  | Naive reverse search algorithm implementation.                                 |
+| `stv_rev_sundaySearch(text, pat)` | Sunday reverse search algorithm implementation.                                |
+| `stv_firstChar(stv, ch)`          | Position of the first character ch.                                            |
+| `stv_lastChar(stv, ch)`           | Position of the last character ch.                                             |
+| `stv_firstNotChar(stv, ch)`       | Position of the first character not equal to ch.                               |
+| `stv_lastNotChar(stv, ch)`        | Position of the last character not equal to ch.                                |
+| `stv_firstDiff(stv_a, stv_b)`     | Position of the first differing character between two views.                   |
+| `stv_lastDiff(stv_a, stv_b)`      | Position of the last differing character between two views.                    |
 
 ### Comparison and Inspection
 | Function                       | Description                                             |

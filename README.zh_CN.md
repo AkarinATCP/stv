@@ -83,17 +83,20 @@ int main(int argc, char* argv[]) {
 | `stv_end`                     |（宏）预定义视图结束位置常量，用于切片。|
 
 ### 搜索
-| 函数                               | 说明                                       |
-|------------------------------------|--------------------------------------------|
-| `stv_search(text, pat)`            | 在 text 中搜索 pat 并返回第一次出现的位置。|
-| `stv_naiveSearch(text, pat)`       | 朴素搜索算法实现。                         |
-| `stv_sundaySearch(text, pat)`      | Sunday 搜索算法实现。                      |
-| `stv_firstChar(stv, ch)`           | 第一个字符 ch 的位置。                     |
-| `stv_lastChar(stv, ch)`            | 最后一个字符 ch 的位置。                   |
-| `stv_firstNotChar(stv, ch)`        | 第一个不等于 ch 的字符位置。               |
-| `stv_lastNotChar(stv, ch)`         | 最后一个不等于 ch 的字符位置。             |
-| `stv_firstDiff(stv_a, stv_b)`      | 两个视图第一个不相同的字符位置。           |
-| `stv_lastDiff(stv_a, stv_b)`       | 两个视图最后一个不相同的字符位置。         |
+| 函数                              | 说明                                       |
+|-----------------------------------|--------------------------------------------|
+| `stv_search(text, pat)`           | 在 text 中搜索 pat 并返回第一次出现的位置。|
+| `stv_naiveSearch(text, pat)`      | 朴素搜索算法实现。                         |
+| `stv_sundaySearch(text, pat)`     | Sunday 搜索算法实现。                      |
+| `stv_rev_search(text, pat)`       | 在 text 中搜索 pat 并返回最后出现的位置。  |
+| `stv_rev_naiveSearch(text, pat)`  | 朴素逆向搜索算法实现。                     |
+| `stv_rev_sundaySearch(text, pat)` | Sunday 逆向搜索算法实现。                  |
+| `stv_firstChar(stv, ch)`          | 第一个字符 ch 的位置。                     |
+| `stv_lastChar(stv, ch)`           | 最后一个字符 ch 的位置。                   |
+| `stv_firstNotChar(stv, ch)`       | 第一个不等于 ch 的字符位置。               |
+| `stv_lastNotChar(stv, ch)`        | 最后一个不等于 ch 的字符位置。             |
+| `stv_firstDiff(stv_a, stv_b)`     | 两个视图第一个不相同的字符位置。           |
+| `stv_lastDiff(stv_a, stv_b)`      | 两个视图最后一个不相同的字符位置。         |
 
 ### 比较与检查
 | 函数                           | 说明                            |
