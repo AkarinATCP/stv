@@ -3,6 +3,7 @@
  * @brief Unity tests for the stv.h
  */
 
+#include <ctype.h>
 #include <stdlib.h>
 #include <string.h>
 
@@ -398,6 +399,95 @@ void test_stv_diff_both_empty(void) {
 }
 
 /* ========================================================================== */
+/*  count / countChar / every / everyChar / some / someChar                   */
+/* ========================================================================== */
+
+void test_stv_count_digits(void) {
+    strview sv = stv_new("abc123def456");
+    TEST_ASSERT_EQUAL_size_t(6, stv_count(sv, isdigit));
+}
+
+void test_stv_count_empty(void) {
+    strview sv = stv_nullstv;
+    TEST_ASSERT_EQUAL_size_t(stv_npos, stv_count(sv, isdigit));
+}
+
+void test_stv_count_null_handle(void) {
+    strview sv = stv_new("abc");
+    TEST_ASSERT_EQUAL_size_t(stv_npos, stv_count(sv, NULL));
+}
+
+void test_stv_countChar_normal(void) {
+    strview sv = stv_new("hello world");
+    TEST_ASSERT_EQUAL_size_t(3, stv_countChar(sv, 'l'));
+}
+
+void test_stv_countChar_empty(void) {
+    strview sv = stv_nullstv;
+    TEST_ASSERT_EQUAL_size_t(stv_npos, stv_countChar(sv, 'a'));
+}
+
+void test_stv_every_digit(void) {
+    strview sv = stv_new("12345");
+    TEST_ASSERT_TRUE(stv_every(sv, isdigit));
+}
+
+void test_stv_every_not_all_digit(void) {
+    strview sv = stv_new("123a");
+    TEST_ASSERT_FALSE(stv_every(sv, isdigit));
+}
+
+void test_stv_every_empty(void) {
+    strview sv = stv_nullstv;
+    TEST_ASSERT_FALSE(stv_every(sv, isdigit));
+}
+
+void test_stv_everyChar_true(void) {
+    strview sv = stv_new("aaaa");
+    TEST_ASSERT_TRUE(stv_everyChar(sv, 'a'));
+}
+
+void test_stv_everyChar_false(void) {
+    strview sv = stv_new("aaab");
+    TEST_ASSERT_FALSE(stv_everyChar(sv, 'a'));
+}
+
+void test_stv_everyChar_empty(void) {
+    strview sv = stv_nullstv;
+    TEST_ASSERT_FALSE(stv_everyChar(sv, 'x'));
+}
+
+void test_stv_some_digit(void) {
+    strview sv = stv_new("abc1xyz");
+    TEST_ASSERT_TRUE(stv_some(sv, isdigit));
+}
+
+void test_stv_some_no_digit(void) {
+    strview sv = stv_new("abcdef");
+    TEST_ASSERT_FALSE(stv_some(sv, isdigit));
+}
+
+void test_stv_some_empty(void) {
+    strview sv = stv_nullstv;
+    TEST_ASSERT_FALSE(stv_some(sv, isdigit));
+}
+
+void test_stv_someChar_found(void) {
+    strview sv = stv_new("hello");
+    TEST_ASSERT_TRUE(stv_someChar(sv, 'e'));
+}
+
+void test_stv_someChar_not_found(void) {
+    strview sv = stv_new("hello");
+    TEST_ASSERT_FALSE(stv_someChar(sv, 'x'));
+}
+
+void test_stv_someChar_empty(void) {
+    strview sv = stv_nullstv;
+    TEST_ASSERT_FALSE(stv_someChar(sv, 'a'));
+}
+
+/* ========================================================================== */
 /*  stv_compare                                                               */
 /* ========================================================================== */
 
@@ -630,6 +720,25 @@ int main(void) {
     RUN_TEST(test_stv_last_diff_length_mismatch);
     RUN_TEST(test_stv_diff_with_empty);
     RUN_TEST(test_stv_diff_both_empty);
+
+    /* count / every / some */
+    RUN_TEST(test_stv_count_digits);
+    RUN_TEST(test_stv_count_empty);
+    RUN_TEST(test_stv_count_null_handle);
+    RUN_TEST(test_stv_countChar_normal);
+    RUN_TEST(test_stv_countChar_empty);
+    RUN_TEST(test_stv_every_digit);
+    RUN_TEST(test_stv_every_not_all_digit);
+    RUN_TEST(test_stv_every_empty);
+    RUN_TEST(test_stv_everyChar_true);
+    RUN_TEST(test_stv_everyChar_false);
+    RUN_TEST(test_stv_everyChar_empty);
+    RUN_TEST(test_stv_some_digit);
+    RUN_TEST(test_stv_some_no_digit);
+    RUN_TEST(test_stv_some_empty);
+    RUN_TEST(test_stv_someChar_found);
+    RUN_TEST(test_stv_someChar_not_found);
+    RUN_TEST(test_stv_someChar_empty);
 
     /* stv_compare */
     RUN_TEST(test_stv_compare_equal);

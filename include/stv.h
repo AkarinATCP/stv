@@ -77,6 +77,14 @@ struct stv_strview_t {
 };
 
 /**
+ * @brief Character classification function pointer type
+ *
+ * Accepts a character (as int) and returns non-zero if the character belongs to the class.
+ * Typical examples include isalnum(), islower(), etc.
+ */
+typedef int (*stv_charClassFn)(int);
+
+/**
  * @brief Create a string view from a C-style string (up to the null terminator)
  *
  * @param c_str Pointer to a null-terminated C string, may be NULL
@@ -250,13 +258,62 @@ LIB_STV_FN size_t stv_firstDiff(strview stv_left, strview stv_right);
 LIB_STV_FN size_t stv_lastDiff(strview stv_left, strview stv_right);
 
 /**
- * @brief Compare two string views lexicographically
+ * @brief Count the number of characters that satisfy a classification function
  *
- * @param stv_left Left view
- * @param stv_right Right view
- * @return Negative if left < right, 0 if equal, positive if left > right
+ * @param stv String view to examine
+ * @param handle Character classification function (e.g., isdigit). If NULL, the function returns stv_npos.
+ * @return Number of matching characters, or stv_npos if the view is empty or handle is NULL
  */
-LIB_STV_FN int stv_compare(strview stv_left, strview stv_right);
+LIB_STV_FN size_t stv_count(strview stv, stv_charClassFn handle);
+
+/**
+ * @brief Count the occurrences of a specific character
+ *
+ * @param stv String view to examine
+ * @param ch Character to count
+ * @return Number of occurrences of ch, or stv_npos if the view is empty
+ */
+LIB_STV_FN size_t stv_countChar(strview stv, const char ch);
+
+/**
+ * @brief Check if every character in the view satisfies a classification function
+ *
+ * An empty view or a NULL handle will cause the function to return false.
+ *
+ * @param stv String view to examine
+ * @param handle Character classification function (must not be NULL for a meaningful result)
+ * @return true if the view and handle is non-empty and all characters match the class; false otherwise
+ */
+LIB_STV_FN bool stv_every(strview stv, stv_charClassFn handle);
+
+/**
+ * @brief Check if every character in the view equals a given character
+ *
+ * An empty view always returns false.
+ *
+ * @param stv String view to examine
+ * @param ch Character to compare against
+ * @return true if the view is non-empty and all characters equal ch; false otherwise
+ */
+LIB_STV_FN bool stv_everyChar(strview stv, const char ch);
+
+/**
+ * @brief Check if at least one character in the view satisfies a classification function
+ *
+ * @param stv String view to examine
+ * @param handle Character classification function (must not be NULL)
+ * @return true if the view and handle is non-empty and at least one character matches the class; false otherwise
+ */
+LIB_STV_FN bool stv_some(strview stv, stv_charClassFn handle);
+
+/**
+ * @brief Check if at least one occurrence of a given character exists in the view
+ *
+ * @param stv String view to examine
+ * @param ch Character to search for
+ * @return true if the view is non-empty and contains ch; false otherwise
+ */
+LIB_STV_FN bool stv_someChar(strview stv, const char ch);
 
 /**
  * @brief Check if a view starts with a given prefix
@@ -310,6 +367,15 @@ LIB_STV_FN bool stv_same(strview stv_left, strview stv_right);
  * @return true if data is NULL or length is 0, false otherwise
  */
 LIB_STV_FN bool stv_empty(strview stv);
+
+/**
+ * @brief Compare two string views lexicographically
+ *
+ * @param stv_left Left view
+ * @param stv_right Right view
+ * @return Negative if left < right, 0 if equal, positive if left > right
+ */
+LIB_STV_FN int stv_compare(strview stv_left, strview stv_right);
 
 /**
  * @brief Get the first character of the view
@@ -723,6 +789,60 @@ LIB_STV_FN size_t stv_lastDiff(strview stv_left, strview stv_right) {
     return (stv_left.len == stv_right.len) ? stv_npos : max_len - 1;
 }
 
+LIB_STV_FN size_t stv_count(strview stv, stv_charClassFn handle) {
+    if (stv_empty(stv) || handle == nullptr) {
+        return stv_npos;
+    }
+
+    size_t      sum     = 0;
+    const char* pos     = stv.data;
+    const char* end_pos = stv.data + stv.len;
+    while (pos < end_pos) {
+        if (handle(*pos)) {
+            sum++;
+        }
+        pos++;
+    }
+    return sum;
+}
+
+LIB_STV_FN size_t stv_countChar(strview stv, const char ch) {
+    if (stv_empty(stv)) {
+        return stv_npos;
+    }
+
+    size_t      sum     = 0;
+    const char* pos     = stv.data;
+    const char* end_pos = stv.data + stv.len;
+    while (pos < end_pos) {
+        if (*pos == ch) {
+            sum++;
+        }
+        pos++;
+    }
+    return sum;
+}
+
+LIB_STV_FN bool stv_every(strview stv, stv_charClassFn handle) {
+    const size_t sum = stv_count(stv, handle);
+    return sum != stv_npos && sum == stv.len;
+}
+
+LIB_STV_FN bool stv_everyChar(strview stv, const char ch) {
+    const size_t sum = stv_countChar(stv, ch);
+    return sum != stv_npos && sum == stv.len;
+}
+
+LIB_STV_FN bool stv_some(strview stv, stv_charClassFn handle) {
+    const size_t sum = stv_count(stv, handle);
+    return sum != stv_npos && sum > 0;
+}
+
+LIB_STV_FN bool stv_someChar(strview stv, const char ch) {
+    const size_t sum = stv_countChar(stv, ch);
+    return sum != stv_npos && sum > 0;
+}
+
 LIB_STV_FN bool stv_startsWith(strview stv_text, strview stv_pat) {
     if (stv_empty(stv_pat)) {
         return true;
@@ -761,13 +881,6 @@ LIB_STV_FN bool stv_endsWith(strview stv_text, strview stv_pat) {
     return true;
 }
 
-LIB_STV_FN int stv_compare(strview stv_left, strview stv_right) {
-    const size_t        pos = stv_firstDiff(stv_left, stv_right);
-    const unsigned char c1  = (pos < stv_left.len) ? stv_left.data[pos] : '\0';
-    const unsigned char c2  = (pos < stv_right.len) ? stv_right.data[pos] : '\0';
-    return c1 - c2;
-}
-
 LIB_STV_FN bool stv_contains(strview stv_text, strview stv_pat) {
     return stv_empty(stv_pat) || stv_search(stv_text, stv_pat) != stv_npos;
 }
@@ -782,6 +895,13 @@ LIB_STV_FN bool stv_same(strview stv_left, strview stv_right) {
 
 LIB_STV_FN bool stv_empty(strview stv) {
     return stv.data == nullptr || stv.len == 0;
+}
+
+LIB_STV_FN int stv_compare(strview stv_left, strview stv_right) {
+    const size_t        pos = stv_firstDiff(stv_left, stv_right);
+    const unsigned char c1  = (pos < stv_left.len) ? stv_left.data[pos] : '\0';
+    const unsigned char c2  = (pos < stv_right.len) ? stv_right.data[pos] : '\0';
+    return c1 - c2;
 }
 
 LIB_STV_FN char stv_front(strview stv) {
