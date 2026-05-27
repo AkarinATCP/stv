@@ -77,6 +77,14 @@ struct stv_strview_t {
 };
 
 /**
+ * @brief Character classification function pointer type
+ *
+ * Accepts a character (as int) and returns non-zero if the character belongs to the class.
+ * Typical examples include isalnum(), islower(), etc.
+ */
+typedef int (*stv_charClassFn)(int);
+
+/**
  * @brief Create a string view from a C-style string (up to the null terminator)
  *
  * @param c_str Pointer to a null-terminated C string, may be NULL
@@ -105,6 +113,52 @@ LIB_STV_FN strview stv_create(const char* str, unsigned char endchar, size_t max
 LIB_STV_FN strview stv_slice(strview stv, size_t begin_pos, size_t end_pos);
 
 /**
+ * @brief Split a string view at the first occurrence of a separator
+ *
+ * Searches for the separator @p sep in @p stv. If found, returns the part before it and stores the remainder
+ * (the part after the separator) in @p *remaining (if @p remaining is not NULL). If the separator is not found,
+ * returns the entire @p stv and sets @p *remaining to an empty view.
+ *
+ * If @p sep is an empty view, the split occurs by single characters: the returned view contains the first
+ * character, and @p *remaining receives the rest of the view (which may be empty if @p stv had length 1).
+ *
+ * @param stv       The string view to split
+ * @param sep       The separator view (may be empty)
+ * @param remaining Optional pointer to a strview that receives the remainder after the separator;
+ *                  can be NULL if the remainder is not needed
+ * @return The part before the separator, or the entire view if the separator is not found
+ */
+LIB_STV_FN strview stv_split(strview stv, strview sep, strview* remaining);
+
+/**
+ * @brief Return the portion of the view before the first occurrence of a delimiter
+ *
+ * Locates the first occurrence of @p delim in @p stv. If found, returns the substring from the beginning up to,
+ * but not including, the delimiter. If the delimiter is not found, the entire @p stv is returned.
+ *
+ * If @p delim is empty, the result is always an empty view.
+ *
+ * @param stv   The string view to examine
+ * @param delim The delimiter view (may be empty)
+ * @return The part before the delimiter; empty view if @p delim is empty
+ */
+LIB_STV_FN strview stv_beforeDelim(strview stv, strview delim);
+
+/**
+ * @brief Return the portion of the view after the first occurrence of a delimiter
+ *
+ * Locates the first occurrence of @p delim in @p stv. If found, returns the substring that follows the
+ * delimiter to the end of the view. If the delimiter is not found, an empty view is returned.
+ *
+ * If @p delim is empty, the entire @p stv is returned unchanged (the function behaves as if no split occurred).
+ *
+ * @param stv   The string view to examine
+ * @param delim The delimiter view (may be empty)
+ * @return The part after the delimiter; entire view if @p delim is empty, empty view if delimiter not found
+ */
+LIB_STV_FN strview stv_afterDelim(strview stv, strview delim);
+
+/**
  * @brief Remove any characters belonging to a given charset from the beginning and end of the view
  *
  * @param stv Source string view
@@ -131,6 +185,33 @@ LIB_STV_FN strview stv_trimStart(strview stv, strview charset);
  * @return A new view with trailing characters removed; if charset is empty, the original view is returned unchanged
  */
 LIB_STV_FN strview stv_trimEnd(strview stv, strview charset);
+
+/**
+ * @brief Remove any characters satisfying a classification function from the beginning and end of the view
+ *
+ * @param stv Source string view
+ * @param handle Character classification function (e.g., isspace). If NULL, no trimming is performed.
+ * @return A new view with leading and trailing matching characters removed
+ */
+LIB_STV_FN strview stv_trimIf(strview stv, stv_charClassFn handle);
+
+/**
+ * @brief Remove any characters satisfying a classification function from the beginning of the view
+ *
+ * @param stv Source string view
+ * @param handle Character classification function (e.g., isspace). If NULL, no trimming is performed.
+ * @return A new view with leading matching characters removed
+ */
+LIB_STV_FN strview stv_trimStartIf(strview stv, stv_charClassFn handle);
+
+/**
+ * @brief Remove any characters satisfying a classification function from the end of the view
+ *
+ * @param stv Source string view
+ * @param handle Character classification function (e.g., isspace). If NULL, no trimming is performed.
+ * @return A new view with trailing matching characters removed
+ */
+LIB_STV_FN strview stv_trimEndIf(strview stv, stv_charClassFn handle);
 
 /**
  * @brief Search for a substring within a text view (automatic algorithm selection)
@@ -250,13 +331,75 @@ LIB_STV_FN size_t stv_firstDiff(strview stv_left, strview stv_right);
 LIB_STV_FN size_t stv_lastDiff(strview stv_left, strview stv_right);
 
 /**
- * @brief Compare two string views lexicographically
+ * @brief Count the number of characters that satisfy a classification function
  *
- * @param stv_left Left view
- * @param stv_right Right view
- * @return Negative if left < right, 0 if equal, positive if left > right
+ * @param stv String view to examine
+ * @param handle Character classification function (e.g., isdigit). If NULL, the function returns stv_npos.
+ * @return Number of matching characters, or stv_npos if the view is empty or handle is NULL
  */
-LIB_STV_FN int stv_compare(strview stv_left, strview stv_right);
+LIB_STV_FN size_t stv_count(strview stv, stv_charClassFn handle);
+
+/**
+ * @brief Count the occurrences of a specific character
+ *
+ * @param stv String view to examine
+ * @param ch Character to count
+ * @return Number of occurrences of ch, or stv_npos if the view is empty
+ */
+LIB_STV_FN size_t stv_countChar(strview stv, const char ch);
+
+/**
+ * @brief Count non-overlapping occurrences of a substring in the view
+ *
+ * Searches for @p sub repeatedly in @p stv from left to right, moving past each match.
+ * The matches are non-overlapping: after a match, the search continues from the character
+ * following the matched substring.
+ *
+ * @param stv The string view to search in
+ * @param sub The substring to count (may be empty)
+ * @return Number of non-overlapping occurrences, stv.len if @p sub is empty, or stv_npos if @p stv is empty
+ */
+LIB_STV_FN size_t stv_countSubstr(strview stv, strview sub);
+
+/**
+ * @brief Check if every character in the view satisfies a classification function
+ *
+ * An empty view or a NULL handle will cause the function to return false.
+ *
+ * @param stv String view to examine
+ * @param handle Character classification function (must not be NULL for a meaningful result)
+ * @return true if the view and handle is non-empty and all characters match the class; false otherwise
+ */
+LIB_STV_FN bool stv_every(strview stv, stv_charClassFn handle);
+
+/**
+ * @brief Check if every character in the view equals a given character
+ *
+ * An empty view always returns false.
+ *
+ * @param stv String view to examine
+ * @param ch Character to compare against
+ * @return true if the view is non-empty and all characters equal ch; false otherwise
+ */
+LIB_STV_FN bool stv_everyChar(strview stv, const char ch);
+
+/**
+ * @brief Check if at least one character in the view satisfies a classification function
+ *
+ * @param stv String view to examine
+ * @param handle Character classification function (must not be NULL)
+ * @return true if the view and handle is non-empty and at least one character matches the class; false otherwise
+ */
+LIB_STV_FN bool stv_some(strview stv, stv_charClassFn handle);
+
+/**
+ * @brief Check if at least one occurrence of a given character exists in the view
+ *
+ * @param stv String view to examine
+ * @param ch Character to search for
+ * @return true if the view is non-empty and contains ch; false otherwise
+ */
+LIB_STV_FN bool stv_someChar(strview stv, const char ch);
 
 /**
  * @brief Check if a view starts with a given prefix
@@ -280,10 +423,10 @@ LIB_STV_FN bool stv_endsWith(strview stv_text, strview stv_pat);
  * @brief Check if a view contains a given substring
  *
  * @param stv_text The text view
- * @param stv_pat The pattern to search for (empty pattern is considered as contained)
+ * @param stv_sub The pattern to search for (empty pattern is considered as contained)
  * @return true if stv_pat appears in stv_text, false otherwise
  */
-LIB_STV_FN bool stv_contains(strview stv_text, strview stv_pat);
+LIB_STV_FN bool stv_contains(strview stv_text, strview stv_sub);
 
 /**
  * @brief Check if two views have identical content (byte-by-byte comparison)
@@ -310,6 +453,15 @@ LIB_STV_FN bool stv_same(strview stv_left, strview stv_right);
  * @return true if data is NULL or length is 0, false otherwise
  */
 LIB_STV_FN bool stv_empty(strview stv);
+
+/**
+ * @brief Compare two string views lexicographically
+ *
+ * @param stv_left Left view
+ * @param stv_right Right view
+ * @return Negative if left < right, 0 if equal, positive if left > right
+ */
+LIB_STV_FN int stv_compare(strview stv_left, strview stv_right);
 
 /**
  * @brief Get the first character of the view
@@ -369,11 +521,14 @@ LIB_STV_FN char* stv_rev_cstr(strview stv, char* mem, size_t size);
     #define stv_makestv(data_v, len_v) ((strview){.data = data_v, .len = len_v})
 #endif
 
+/** @brief Convenience macro: construct a strview from literal string */
+#define stv_literal(str) stv_makestv(str, sizeof(str) - 1)
+
 /** @brief Predefined empty string view (data = nullptr, len = 0) */
 #define stv_nullstv stv_makestv(nullptr, 0)
 
 /** @brief Predefined whitespace character set view (space, carriage return, newline, tab, vertical tab, form feed) */
-#define stv_whitespace stv_makestv(" \r\n\t\v\f", 6)
+#define stv_whitespace stv_literal(" \r\n\t\v\f")
 
 /** @brief Sentinel value indicating "not found" */
 #define stv_npos ((size_t)-1)
@@ -431,6 +586,43 @@ LIB_STV_FN strview stv_slice(strview stv, size_t begin_pos, size_t end_pos) {
     return stv_nullstv;
 }
 
+LIB_STV_FN strview stv_split(strview stv, strview sep, strview* remaining) {
+    if (stv_empty(stv)) {
+        return stv;
+    }
+
+    const bool   empty_sep = stv_empty(sep);
+    const size_t pos       = empty_sep ? 1 : stv_search(stv, sep);
+    const size_t len       = empty_sep ? 0 : sep.len;
+    const bool   split_end = (pos == stv_npos);
+    if (remaining) {
+        *remaining = split_end ? stv_nullstv : stv_slice(stv, pos + len, stv_end);
+    }
+    return split_end ? stv : stv_slice(stv, stv_begin, pos);
+}
+
+LIB_STV_FN strview stv_beforeDelim(strview stv, strview delim) {
+    if (stv_empty(stv)) {
+        return stv;
+    }
+    if (stv_empty(delim)) {
+        return stv_nullstv;
+    }
+    const size_t pos = stv_search(stv, delim);
+    return stv_slice(stv, stv_begin, pos);
+}
+
+LIB_STV_FN strview stv_afterDelim(strview stv, strview delim) {
+    if (stv_empty(stv) || stv_empty(delim)) {
+        return stv;
+    }
+    const size_t pos = stv_search(stv, delim);
+    if (pos == stv_npos) {
+        return stv_nullstv;
+    }
+    return stv_slice(stv, pos + delim.len, stv_end);
+}
+
 LIB_STV_FN strview stv_trim(strview stv, strview charset) {
     return stv_trimStart(stv_trimEnd(stv, charset), charset);
 }
@@ -470,6 +662,45 @@ LIB_STV_FN strview stv_trimEnd(strview stv, strview charset) {
     while (ch > start_pos) {
         ch--;
         if (chs[(unsigned char)*ch]) {
+            tc++;
+        } else {
+            break;
+        }
+    }
+    return stv_makestv(stv.data, stv.len - tc);
+}
+
+LIB_STV_FN strview stv_trimIf(strview stv, stv_charClassFn handle) {
+    return stv_trimStartIf(stv_trimEndIf(stv, handle), handle);
+}
+
+LIB_STV_FN strview stv_trimStartIf(strview stv, stv_charClassFn handle) {
+    if (stv_empty(stv) || handle == nullptr) {
+        return stv;
+    }
+    const char* end_pos = stv.data + stv.len;
+    const char* ch      = stv.data;
+    size_t      tc      = 0;
+    while (ch < end_pos) {
+        if (handle(*ch)) {
+            ch++, tc++;
+        } else {
+            break;
+        }
+    }
+    return stv_makestv(stv.data + tc, stv.len - tc);
+}
+
+LIB_STV_FN strview stv_trimEndIf(strview stv, stv_charClassFn handle) {
+    if (stv_empty(stv) || handle == nullptr) {
+        return stv;
+    }
+    const char* start_pos = stv.data;
+    const char* ch        = stv.data + stv.len;
+    size_t      tc        = 0;
+    while (ch > start_pos) {
+        ch--;
+        if (handle(*ch)) {
             tc++;
         } else {
             break;
@@ -723,6 +954,79 @@ LIB_STV_FN size_t stv_lastDiff(strview stv_left, strview stv_right) {
     return (stv_left.len == stv_right.len) ? stv_npos : max_len - 1;
 }
 
+LIB_STV_FN size_t stv_count(strview stv, stv_charClassFn handle) {
+    if (stv_empty(stv) || handle == nullptr) {
+        return stv_npos;
+    }
+
+    size_t      sum     = 0;
+    const char* pos     = stv.data;
+    const char* end_pos = stv.data + stv.len;
+    while (pos < end_pos) {
+        if (handle(*pos)) {
+            sum++;
+        }
+        pos++;
+    }
+    return sum;
+}
+
+LIB_STV_FN size_t stv_countChar(strview stv, const char ch) {
+    if (stv_empty(stv)) {
+        return stv_npos;
+    }
+
+    size_t      sum     = 0;
+    const char* pos     = stv.data;
+    const char* end_pos = stv.data + stv.len;
+    while (pos < end_pos) {
+        if (*pos == ch) {
+            sum++;
+        }
+        pos++;
+    }
+    return sum;
+}
+
+LIB_STV_FN size_t stv_countSubstr(strview stv, strview sub) {
+    if (stv_empty(stv)) {
+        return stv_npos;
+    }
+    if (stv_empty(sub)) {
+        return stv.len;
+    }
+    size_t sum = 0, len = sub.len;
+    while (true) {
+        const size_t pos = stv_search(stv, sub);
+        if (pos == stv_npos) {
+            break;
+        }
+        stv = stv_slice(stv, pos + len, stv_end);
+        sum++;
+    }
+    return sum;
+}
+
+LIB_STV_FN bool stv_every(strview stv, stv_charClassFn handle) {
+    const size_t sum = stv_count(stv, handle);
+    return sum != stv_npos && sum == stv.len;
+}
+
+LIB_STV_FN bool stv_everyChar(strview stv, const char ch) {
+    const size_t sum = stv_countChar(stv, ch);
+    return sum != stv_npos && sum == stv.len;
+}
+
+LIB_STV_FN bool stv_some(strview stv, stv_charClassFn handle) {
+    const size_t sum = stv_count(stv, handle);
+    return sum != stv_npos && sum > 0;
+}
+
+LIB_STV_FN bool stv_someChar(strview stv, const char ch) {
+    const size_t sum = stv_countChar(stv, ch);
+    return sum != stv_npos && sum > 0;
+}
+
 LIB_STV_FN bool stv_startsWith(strview stv_text, strview stv_pat) {
     if (stv_empty(stv_pat)) {
         return true;
@@ -761,15 +1065,8 @@ LIB_STV_FN bool stv_endsWith(strview stv_text, strview stv_pat) {
     return true;
 }
 
-LIB_STV_FN int stv_compare(strview stv_left, strview stv_right) {
-    const size_t        pos = stv_firstDiff(stv_left, stv_right);
-    const unsigned char c1  = (pos < stv_left.len) ? stv_left.data[pos] : '\0';
-    const unsigned char c2  = (pos < stv_right.len) ? stv_right.data[pos] : '\0';
-    return c1 - c2;
-}
-
-LIB_STV_FN bool stv_contains(strview stv_text, strview stv_pat) {
-    return stv_empty(stv_pat) || stv_search(stv_text, stv_pat) != stv_npos;
+LIB_STV_FN bool stv_contains(strview stv_text, strview stv_sub) {
+    return stv_empty(stv_sub) || stv_search(stv_text, stv_sub) != stv_npos;
 }
 
 LIB_STV_FN bool stv_equal(strview stv_left, strview stv_right) {
@@ -782,6 +1079,13 @@ LIB_STV_FN bool stv_same(strview stv_left, strview stv_right) {
 
 LIB_STV_FN bool stv_empty(strview stv) {
     return stv.data == nullptr || stv.len == 0;
+}
+
+LIB_STV_FN int stv_compare(strview stv_left, strview stv_right) {
+    const size_t        pos = stv_firstDiff(stv_left, stv_right);
+    const unsigned char c1  = (pos < stv_left.len) ? stv_left.data[pos] : '\0';
+    const unsigned char c2  = (pos < stv_right.len) ? stv_right.data[pos] : '\0';
+    return c1 - c2;
 }
 
 LIB_STV_FN char stv_front(strview stv) {
