@@ -74,11 +74,15 @@ Or define `LIB_STV_STATIC_INLINE_IMPL` before each inclusion to make all functio
 | `stv_nullstv`                      | (Macro) Predefined empty view constant.                                                                   |
 
 ### Slicing
-| Function / Macro              | Description                                             |
-|-------------------------------|---------------------------------------------------------|
-| `stv_slice(stv, begin, end)`  | Obtain a sub-view for the slice `[begin, end)`.         |
-| `stv_begin`                   | (Macro) Predefined start position constant for slicing. |
-| `stv_end`                     | (Macro) Predefined end position constant for slicing.   |
+| Function / Macro              | Description                                                                              |
+|-------------------------------|------------------------------------------------------------------------------------------|
+| `stv_slice(stv, begin, end)`  | Obtain a sub-view for the slice `[begin, end)`.                                          |
+| `stv_begin`                   | (Macro) Predefined start position constant for slicing.                                  |
+| `stv_end`                     | (Macro) Predefined end position constant for slicing.                                    |
+| `stv_removeStart(stv, len)`     | Remove `len` bytes from the start of the view.                                         |
+| `stv_removeEnd(stv, len)`       | Remove `len` bytes from the end of the view.                                           |
+| `stv_removePrefix(stv, prefix)` | Remove `prefix` from the start if the view starts with it; otherwise return unchanged. |
+| `stv_removeSuffix(stv, suffix)` | Remove `suffix` from the end if the view ends with it; otherwise return unchanged.     |
 
 ### Splitting
 | Function                         | Description                                                                                   |

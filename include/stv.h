@@ -113,6 +113,54 @@ LIB_STV_FN strview stv_create(const char* str, unsigned char endchar, size_t max
 LIB_STV_FN strview stv_slice(strview stv, size_t begin_pos, size_t end_pos);
 
 /**
+ * @brief Remove a given number of bytes from the beginning of the view
+ *
+ * Returns a new view that starts at @p len bytes from the beginning of @p stv.
+ * If @p len is greater than or equal to the view length, an empty view is returned.
+ *
+ * @param stv The source string view
+ * @param len Number of bytes to remove from the start
+ * @return A new view with the prefix removed; an empty view if @p len >= stv.len
+ */
+LIB_STV_FN strview stv_removeStart(strview stv, size_t len);
+
+/**
+ * @brief Remove a given number of bytes from the end of the view
+ *
+ * Returns a new view that ends @p len bytes before the end of @p stv.
+ * If @p len is greater than or equal to the view length, an empty view is returned.
+ *
+ * @param stv The source string view
+ * @param len Number of bytes to remove from the end
+ * @return A new view with the suffix removed; an empty view if @p len >= stv.len
+ */
+LIB_STV_FN strview stv_removeEnd(strview stv, size_t len);
+
+/**
+ * @brief Remove the prefix from the view if it starts with the given pattern
+ *
+ * Checks if @p stv starts with @p prefix; if so, returns the remainder of the view
+ * after the prefix. If the prefix does not match, the original view is returned unchanged.
+ *
+ * @param stv    The source string view
+ * @param prefix The prefix to remove (may be empty; an empty prefix matches and returns stv unchanged)
+ * @return A view without the prefix, or the original view if it does not start with prefix
+ */
+LIB_STV_FN strview stv_removePrefix(strview stv, strview prefix);
+
+/**
+ * @brief Remove the suffix from the view if it ends with the given pattern
+ *
+ * Checks if @p stv ends with @p suffix; if so, returns the view without the suffix.
+ * If the suffix does not match, the original view is returned unchanged.
+ *
+ * @param stv    The source string view
+ * @param suffix The suffix to remove (may be empty; an empty suffix matches and returns stv unchanged)
+ * @return A view without the suffix, or the original view if it does not end with suffix
+ */
+LIB_STV_FN strview stv_removeSuffix(strview stv, strview suffix);
+
+/**
  * @brief Split a string view at the first occurrence of a separator
  *
  * Searches for the separator @p sep in @p stv. If found, returns the part before it and stores the remainder
@@ -584,6 +632,28 @@ LIB_STV_FN strview stv_slice(strview stv, size_t begin_pos, size_t end_pos) {
         return stv_makestv(stv.data + begin_pos, end_pos - begin_pos);
     }
     return stv_nullstv;
+}
+
+LIB_STV_FN strview stv_removeStart(strview stv, size_t len) {
+    return stv_slice(stv, len, stv_end);
+}
+
+LIB_STV_FN strview stv_removeEnd(strview stv, size_t len) {
+    return stv_slice(stv, stv_begin, stv.len - len);
+}
+
+LIB_STV_FN strview stv_removePrefix(strview stv, strview prefix) {
+    if (stv_startsWith(stv, prefix)) {
+        return stv_slice(stv, prefix.len, stv_end);
+    }
+    return stv;
+}
+
+LIB_STV_FN strview stv_removeSuffix(strview stv, strview suffix) {
+    if (stv_endsWith(stv, suffix)) {
+        return stv_slice(stv, stv_begin, stv.len - suffix.len);
+    }
+    return stv;
 }
 
 LIB_STV_FN strview stv_split(strview stv, strview sep, strview* remaining) {

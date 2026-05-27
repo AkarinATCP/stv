@@ -112,6 +112,130 @@ void test_stv_slice_null_view(void) {
 }
 
 /* ========================================================================== */
+/*  stv_removeStart / stv_removeEnd / stv_removePrefix / stv_removeSuffix    */
+/* ========================================================================== */
+
+void test_stv_removeStart_normal(void) {
+    strview sv = stv_literal("Hello World");
+    strview s  = stv_removeStart(sv, 6);
+    TEST_ASSERT_EQUAL_size_t(5, s.len);
+    TEST_ASSERT_EQUAL_CHAR_ARRAY("World", s.data, 5);
+}
+
+void test_stv_removeStart_zero(void) {
+    strview sv = stv_literal("Hello");
+    strview s  = stv_removeStart(sv, 0);
+    TEST_ASSERT_TRUE(stv_equal(sv, s));
+}
+
+void test_stv_removeStart_exact_length(void) {
+    strview sv = stv_literal("abc");
+    strview s  = stv_removeStart(sv, 3);
+    TEST_ASSERT_TRUE(stv_empty(s));
+}
+
+void test_stv_removeStart_exceeds_length(void) {
+    strview sv = stv_literal("abc");
+    strview s  = stv_removeStart(sv, 10);
+    TEST_ASSERT_TRUE(stv_empty(s));
+}
+
+void test_stv_removeStart_empty_view(void) {
+    strview sv = stv_nullstv;
+    strview s  = stv_removeStart(sv, 5);
+    TEST_ASSERT_TRUE(stv_empty(s));
+}
+
+void test_stv_removeEnd_normal(void) {
+    strview sv = stv_literal("Hello World");
+    strview s  = stv_removeEnd(sv, 6);
+    TEST_ASSERT_EQUAL_size_t(5, s.len);
+    TEST_ASSERT_EQUAL_CHAR_ARRAY("Hello", s.data, 5);
+}
+
+void test_stv_removeEnd_zero(void) {
+    strview sv = stv_literal("Hello");
+    strview s  = stv_removeEnd(sv, 0);
+    TEST_ASSERT_TRUE(stv_equal(sv, s));
+}
+
+void test_stv_removeEnd_exact_length(void) {
+    strview sv = stv_literal("abc");
+    strview s  = stv_removeEnd(sv, 3);
+    TEST_ASSERT_TRUE(stv_empty(s));
+}
+
+void test_stv_removeEnd_exceeds_length(void) {
+    strview sv = stv_literal("abc");
+    strview s  = stv_removeEnd(sv, 5);
+    TEST_ASSERT_TRUE(stv_empty(s));
+}
+
+void test_stv_removeEnd_empty_view(void) {
+    strview sv = stv_nullstv;
+    strview s  = stv_removeEnd(sv, 2);
+    TEST_ASSERT_TRUE(stv_empty(s));
+}
+
+void test_stv_removePrefix_match(void) {
+    strview sv     = stv_literal("http://example.com");
+    strview prefix = stv_literal("http://");
+    strview result = stv_removePrefix(sv, prefix);
+    TEST_ASSERT_EQUAL_size_t(11, result.len);
+    TEST_ASSERT_EQUAL_CHAR_ARRAY("example.com", result.data, 11);
+}
+
+void test_stv_removePrefix_no_match(void) {
+    strview sv     = stv_literal("ftp://example.com");
+    strview prefix = stv_literal("http://");
+    strview result = stv_removePrefix(sv, prefix);
+    TEST_ASSERT_TRUE(stv_equal(sv, result));
+}
+
+void test_stv_removePrefix_empty_prefix(void) {
+    strview sv     = stv_literal("hello");
+    strview prefix = stv_nullstv;
+    strview result = stv_removePrefix(sv, prefix);
+    TEST_ASSERT_TRUE(stv_equal(sv, result));
+}
+
+void test_stv_removePrefix_empty_view(void) {
+    strview sv     = stv_nullstv;
+    strview prefix = stv_literal("a");
+    strview result = stv_removePrefix(sv, prefix);
+    TEST_ASSERT_TRUE(stv_empty(result));
+}
+
+void test_stv_removeSuffix_match(void) {
+    strview sv     = stv_literal("document.txt");
+    strview suffix = stv_literal(".txt");
+    strview result = stv_removeSuffix(sv, suffix);
+    TEST_ASSERT_EQUAL_size_t(8, result.len);
+    TEST_ASSERT_EQUAL_CHAR_ARRAY("document", result.data, 8);
+}
+
+void test_stv_removeSuffix_no_match(void) {
+    strview sv     = stv_literal("document.md");
+    strview suffix = stv_literal(".txt");
+    strview result = stv_removeSuffix(sv, suffix);
+    TEST_ASSERT_TRUE(stv_equal(sv, result));
+}
+
+void test_stv_removeSuffix_empty_suffix(void) {
+    strview sv     = stv_literal("hello");
+    strview suffix = stv_nullstv;
+    strview result = stv_removeSuffix(sv, suffix);
+    TEST_ASSERT_TRUE(stv_equal(sv, result));
+}
+
+void test_stv_removeSuffix_empty_view(void) {
+    strview sv     = stv_nullstv;
+    strview suffix = stv_literal("a");
+    strview result = stv_removeSuffix(sv, suffix);
+    TEST_ASSERT_TRUE(stv_empty(result));
+}
+
+/* ========================================================================== */
 /*  trim functions                                                            */
 /* ========================================================================== */
 
@@ -901,6 +1025,26 @@ int main(void) {
     RUN_TEST(test_stv_slice_empty_result);
     RUN_TEST(test_stv_slice_out_of_range);
     RUN_TEST(test_stv_slice_null_view);
+
+    /* stv_removeStart / stv_removeEnd / stv_removePrefix / stv_removeSuffix */
+    RUN_TEST(test_stv_removeStart_normal);
+    RUN_TEST(test_stv_removeStart_zero);
+    RUN_TEST(test_stv_removeStart_exact_length);
+    RUN_TEST(test_stv_removeStart_exceeds_length);
+    RUN_TEST(test_stv_removeStart_empty_view);
+    RUN_TEST(test_stv_removeEnd_normal);
+    RUN_TEST(test_stv_removeEnd_zero);
+    RUN_TEST(test_stv_removeEnd_exact_length);
+    RUN_TEST(test_stv_removeEnd_exceeds_length);
+    RUN_TEST(test_stv_removeEnd_empty_view);
+    RUN_TEST(test_stv_removePrefix_match);
+    RUN_TEST(test_stv_removePrefix_no_match);
+    RUN_TEST(test_stv_removePrefix_empty_prefix);
+    RUN_TEST(test_stv_removePrefix_empty_view);
+    RUN_TEST(test_stv_removeSuffix_match);
+    RUN_TEST(test_stv_removeSuffix_no_match);
+    RUN_TEST(test_stv_removeSuffix_empty_suffix);
+    RUN_TEST(test_stv_removeSuffix_empty_view);
 
     /* trim functions */
     RUN_TEST(test_stv_trim_both);
