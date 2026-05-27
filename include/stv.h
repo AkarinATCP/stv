@@ -113,6 +113,52 @@ LIB_STV_FN strview stv_create(const char* str, unsigned char endchar, size_t max
 LIB_STV_FN strview stv_slice(strview stv, size_t begin_pos, size_t end_pos);
 
 /**
+ * @brief Split a string view at the first occurrence of a separator
+ *
+ * Searches for the separator @p sep in @p stv. If found, returns the part before it and stores the remainder
+ * (the part after the separator) in @p *remaining (if @p remaining is not NULL). If the separator is not found,
+ * returns the entire @p stv and sets @p *remaining to an empty view.
+ *
+ * If @p sep is an empty view, the split occurs by single characters: the returned view contains the first
+ * character, and @p *remaining receives the rest of the view (which may be empty if @p stv had length 1).
+ *
+ * @param stv       The string view to split
+ * @param sep       The separator view (may be empty)
+ * @param remaining Optional pointer to a strview that receives the remainder after the separator;
+ *                  can be NULL if the remainder is not needed
+ * @return The part before the separator, or the entire view if the separator is not found
+ */
+LIB_STV_FN strview stv_split(strview stv, strview sep, strview* remaining);
+
+/**
+ * @brief Return the portion of the view before the first occurrence of a delimiter
+ *
+ * Locates the first occurrence of @p delim in @p stv. If found, returns the substring from the beginning up to,
+ * but not including, the delimiter. If the delimiter is not found, the entire @p stv is returned.
+ *
+ * If @p delim is empty, the result is always an empty view.
+ *
+ * @param stv   The string view to examine
+ * @param delim The delimiter view (may be empty)
+ * @return The part before the delimiter; empty view if @p delim is empty
+ */
+LIB_STV_FN strview stv_beforeDelim(strview stv, strview delim);
+
+/**
+ * @brief Return the portion of the view after the first occurrence of a delimiter
+ *
+ * Locates the first occurrence of @p delim in @p stv. If found, returns the substring that follows the
+ * delimiter to the end of the view. If the delimiter is not found, an empty view is returned.
+ *
+ * If @p delim is empty, the entire @p stv is returned unchanged (the function behaves as if no split occurred).
+ *
+ * @param stv   The string view to examine
+ * @param delim The delimiter view (may be empty)
+ * @return The part after the delimiter; entire view if @p delim is empty, empty view if delimiter not found
+ */
+LIB_STV_FN strview stv_afterDelim(strview stv, strview delim);
+
+/**
  * @brief Remove any characters belonging to a given charset from the beginning and end of the view
  *
  * @param stv Source string view
@@ -337,10 +383,10 @@ LIB_STV_FN bool stv_endsWith(strview stv_text, strview stv_pat);
  * @brief Check if a view contains a given substring
  *
  * @param stv_text The text view
- * @param stv_pat The pattern to search for (empty pattern is considered as contained)
+ * @param stv_sub The pattern to search for (empty pattern is considered as contained)
  * @return true if stv_pat appears in stv_text, false otherwise
  */
-LIB_STV_FN bool stv_contains(strview stv_text, strview stv_pat);
+LIB_STV_FN bool stv_contains(strview stv_text, strview stv_sub);
 
 /**
  * @brief Check if two views have identical content (byte-by-byte comparison)
@@ -435,11 +481,14 @@ LIB_STV_FN char* stv_rev_cstr(strview stv, char* mem, size_t size);
     #define stv_makestv(data_v, len_v) ((strview){.data = data_v, .len = len_v})
 #endif
 
+/** @brief Convenience macro: construct a strview from literal string */
+#define stv_literal(str) stv_makestv(str, sizeof(str) - 1)
+
 /** @brief Predefined empty string view (data = nullptr, len = 0) */
 #define stv_nullstv stv_makestv(nullptr, 0)
 
 /** @brief Predefined whitespace character set view (space, carriage return, newline, tab, vertical tab, form feed) */
-#define stv_whitespace stv_makestv(" \r\n\t\v\f", 6)
+#define stv_whitespace stv_literal(" \r\n\t\v\f")
 
 /** @brief Sentinel value indicating "not found" */
 #define stv_npos ((size_t)-1)
@@ -495,6 +544,43 @@ LIB_STV_FN strview stv_slice(strview stv, size_t begin_pos, size_t end_pos) {
         return stv_makestv(stv.data + begin_pos, end_pos - begin_pos);
     }
     return stv_nullstv;
+}
+
+LIB_STV_FN strview stv_split(strview stv, strview sep, strview* remaining) {
+    if (stv_empty(stv)) {
+        return stv;
+    }
+
+    const bool   empty_sep = stv_empty(sep);
+    const size_t pos       = empty_sep ? 1 : stv_search(stv, sep);
+    const size_t len       = empty_sep ? 0 : sep.len;
+    const bool   split_end = (pos == stv_npos);
+    if (remaining) {
+        *remaining = split_end ? stv_nullstv : stv_slice(stv, pos + len, stv_end);
+    }
+    return split_end ? stv : stv_slice(stv, stv_begin, pos);
+}
+
+LIB_STV_FN strview stv_beforeDelim(strview stv, strview delim) {
+    if (stv_empty(stv)) {
+        return stv;
+    }
+    if (stv_empty(delim)) {
+        return stv_nullstv;
+    }
+    const size_t pos = stv_search(stv, delim);
+    return stv_slice(stv, stv_begin, pos);
+}
+
+LIB_STV_FN strview stv_afterDelim(strview stv, strview delim) {
+    if (stv_empty(stv) || stv_empty(delim)) {
+        return stv;
+    }
+    const size_t pos = stv_search(stv, delim);
+    if (pos == stv_npos) {
+        return stv_nullstv;
+    }
+    return stv_slice(stv, pos + delim.len, stv_end);
 }
 
 LIB_STV_FN strview stv_trim(strview stv, strview charset) {
@@ -881,8 +967,8 @@ LIB_STV_FN bool stv_endsWith(strview stv_text, strview stv_pat) {
     return true;
 }
 
-LIB_STV_FN bool stv_contains(strview stv_text, strview stv_pat) {
-    return stv_empty(stv_pat) || stv_search(stv_text, stv_pat) != stv_npos;
+LIB_STV_FN bool stv_contains(strview stv_text, strview stv_sub) {
+    return stv_empty(stv_sub) || stv_search(stv_text, stv_sub) != stv_npos;
 }
 
 LIB_STV_FN bool stv_equal(strview stv_left, strview stv_right) {

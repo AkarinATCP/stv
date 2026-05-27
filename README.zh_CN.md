@@ -11,7 +11,7 @@
 - 只读字符串视图类型 `strview`，不影响源数据。
 - 无须 `<stdlib.h>` 和 `<string.h>`，完全无动态内存分配。
 - 所有函数均为纯函数，不依赖全局状态。
-- 提供常见字符串操作：创建、切片、修剪、搜索、查找、比较等。
+- 提供常用的字符串操作：创建、切片、修剪、搜索、查找、比较、计数、谓词等。 
 
 ## 开始使用
 
@@ -56,16 +56,19 @@ int main(int argc, char* argv[]) {
 ## API 概览
 
 ### 类型定义
-| 类型              | 说明                                                              |
-|-------------------|-------------------------------------------------------------------|
-| `strview`         | 字符串视图类型，成员：`data`（const char*）、`len`（size_t）。    |
-| `stv_charClassFn` | 字符分类函数指针类型：`int (*)(int)`. 用于 count/every/some 方法。|
+| 定义              | 类型 / 成员         |说明                                                 |
+|-------------------|---------------------|-----------------------------------------------------|
+| `strview`         | `struct{data, len}` | 字符串视图类型，包含源字符串的指针和视图长度。      |
+| `strview.data`    | `const char*`       | 指向源字符串的只读指针。                            |
+| `strview.len`     | `size_t`            | 视图长度。                                          |
+| `stv_charClassFn` | `int (*)(int)`      | 字符分类函数指针类型，用于 count/every/some 等方法。|
 
 ### 创建视图
 | 函数 / 宏                          | 说明                                                    |
 |------------------------------------|---------------------------------------------------------|
 | `stv_new(cstr)`                    | 从 C 字符串创建视图。                                   |
 | `stv_create(str, endchar, maxlen)` | 从连续字符序列创建视图，需要指定终止字符和最大扫描长度。|
+| `stv_literal(cstr)`                |（宏）用字符串字面量构造视图字面量。                     |
 | `stv_makestv(data, len)`           |（宏）用指针和长度构造视图字面量。                       |
 | `stv_nullstv`                      |（宏）预定义空视图常量。                                 |
 
@@ -76,42 +79,49 @@ int main(int argc, char* argv[]) {
 | `stv_begin`                   |（宏）预定义视图起始位置常量，用于切片。|
 | `stv_end`                     |（宏）预定义视图结束位置常量，用于切片。|
 
+### 分割
+| 函数                              | 描述                                                                     |
+|-----------------------------------|--------------------------------------------------------------------------|
+| `stv_split(stv, sep, &remaining)` | 在第一次出现的 `sep` 处分割。返回分割前的部分，剩余部分存储在 `*rem` 中。|
+| `stv_beforeDelim(stv, delim)`     | 返回视图中第一次出现 `delim` 之前的部分。                                |
+| `stv_afterDelim(stv, delim)`      | 返回视图中第一次出现 `delim` 之后的部分。                                |
+
 ### 修剪
 | 函数 / 宏                     | 说明                                   |
 |-------------------------------|----------------------------------------|
-| `stv_trim(stv, charset)`      | 去除两端属于 charset 的字符。          |
-| `stv_trimStart(stv, charset)` | 去除开头属于 charset 的字符。          |
-| `stv_trimEnd(stv, charset)`   | 去除结尾属于 charset 的字符。          |
+| `stv_trim(stv, charset)`      | 去除两端属于 `charset` 的字符。        |
+| `stv_trimStart(stv, charset)` | 去除开头属于 `charset` 的字符。        |
+| `stv_trimEnd(stv, charset)`   | 去除结尾属于 `charset` 的字符。        |
 | `stv_whitespace`              |（宏）预定义空白字符视图常量，用于修剪。|
 
 ### 搜索
-| 函数                               | 说明                                       |
-|------------------------------------|--------------------------------------------|
-| `stv_search(text, pat)`            | 在 text 中搜索 pat 并返回第一次出现的位置。|
-| `stv_naiveSearch(text, pat)`       | 朴素搜索算法实现。                         |
-| `stv_sundaySearch(text, pat)`      | Sunday 搜索算法实现。                      |
-| `stv_firstChar(stv, ch)`           | 第一个字符 ch 的位置。                     |
-| `stv_lastChar(stv, ch)`            | 最后一个字符 ch 的位置。                   |
-| `stv_firstNotChar(stv, ch)`        | 第一个不等于 ch 的字符位置。               |
-| `stv_lastNotChar(stv, ch)`         | 最后一个不等于 ch 的字符位置。             |
-| `stv_firstDiff(stv_a, stv_b)`      | 两个视图第一个不相同的字符位置。           |
-| `stv_lastDiff(stv_a, stv_b)`       | 两个视图最后一个不相同的字符位置。         |
+| 函数                               | 说明                                           |
+|------------------------------------|------------------------------------------------|
+| `stv_search(text, pat)`            | 在 `text` 中搜索 `pat` 并返回第一次出现的位置。|
+| `stv_naiveSearch(text, pat)`       | 朴素搜索算法实现。                             |
+| `stv_sundaySearch(text, pat)`      | Sunday 搜索算法实现。                          |
+| `stv_firstChar(stv, ch)`           | 第一个字符 `ch` 的位置。                       |
+| `stv_lastChar(stv, ch)`            | 最后一个字符 `ch` 的位置。                     |
+| `stv_firstNotChar(stv, ch)`        | 第一个不等于 `ch` 的字符位置。                 |
+| `stv_lastNotChar(stv, ch)`         | 最后一个不等于 `ch` 的字符位置。               |
+| `stv_firstDiff(stv_a, stv_b)`      | 两个视图第一个不相同的字符位置。               |
+| `stv_lastDiff(stv_a, stv_b)`       | 两个视图最后一个不相同的字符位置。             |
 
 ### 比较与检查
-| 函数                           | 说明                            |
-|--------------------------------|---------------------------------|
-| `stv_compare(stv_a, stv_b)`    | 字典序比较两个视图。            |
-| `stv_equal(stv_a, stv_b)`      | 逐字节判断内容是否相等。        |
-| `stv_same(stv_a, stv_b)`       | 判断是否引用同一块内存区域。    |
-| `stv_startsWith(text, prefix)` | 检查 text 是否以 prefix 为前缀。|
-| `stv_endsWith(text, suffix)`   | 检查 text 是否以 suffix 为后缀。|
-| `stv_contains(text, substr)`   | 检查 text 是否包含 substr 。    |
-| `stv_empty(v)`                 | 检查视图是否为空。              |
+| 函数                           | 说明                                |
+|--------------------------------|-------------------------------------|
+| `stv_compare(stv_a, stv_b)`    | 字典序比较两个视图。                |
+| `stv_equal(stv_a, stv_b)`      | 逐字节判断内容是否相等。            |
+| `stv_same(stv_a, stv_b)`       | 判断是否引用同一块内存区域。        |
+| `stv_startsWith(text, prefix)` | 检查 `text` 是否以 `prefix` 为前缀。|
+| `stv_endsWith(text, suffix)`   | 检查 `text` 是否以 `suffix` 为后缀。|
+| `stv_contains(text, substr)`   | 检查 `text` 是否包含 `substr` 。    |
+| `stv_empty(stv)`               | 检查视图是否为空。                  |
 
 ### 计数与谓词
 | 函数                     | 描述                                         |
 |--------------------------|----------------------------------------------|
-| `stv_count(stv, fn)`     | 统计通过分类函数 fn 的字符数量。             |
+| `stv_count(stv, fn)`     | 统计通过分类函数 `fn` 的字符数量。           |
 | `stv_countChar(stv, ch)` | 统计给定字符出现的次数。                     |
 | `stv_every(stv, fn)`     | 如果所有字符都满足分类函数，则返回 true。    |
 | `stv_everyChar(stv, ch)` | 如果所有字符都等于给定字符，则返回 true。    |
