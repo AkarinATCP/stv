@@ -322,6 +322,19 @@ LIB_STV_FN size_t stv_count(strview stv, stv_charClassFn handle);
 LIB_STV_FN size_t stv_countChar(strview stv, const char ch);
 
 /**
+ * @brief Count non-overlapping occurrences of a substring in the view
+ *
+ * Searches for @p sub repeatedly in @p stv from left to right, moving past each match.
+ * The matches are non-overlapping: after a match, the search continues from the character
+ * following the matched substring.
+ *
+ * @param stv The string view to search in
+ * @param sub The substring to count (may be empty)
+ * @return Number of non-overlapping occurrences, stv.len if @p sub is empty, or stv_npos if @p stv is empty
+ */
+LIB_STV_FN size_t stv_countSubstr(strview stv, strview sub);
+
+/**
  * @brief Check if every character in the view satisfies a classification function
  *
  * An empty view or a NULL handle will cause the function to return false.
@@ -905,6 +918,25 @@ LIB_STV_FN size_t stv_countChar(strview stv, const char ch) {
             sum++;
         }
         pos++;
+    }
+    return sum;
+}
+
+LIB_STV_FN size_t stv_countSubstr(strview stv, strview sub) {
+    if (stv_empty(stv)) {
+        return stv_npos;
+    }
+    if (stv_empty(sub)) {
+        return stv.len;
+    }
+    size_t sum = 0, len = sub.len;
+    while (true) {
+        const size_t pos = stv_search(stv, sub);
+        if (pos == stv_npos) {
+            break;
+        }
+        stv = stv_slice(stv, pos + len, stv_end);
+        sum++;
     }
     return sum;
 }

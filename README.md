@@ -120,14 +120,15 @@ Or define `LIB_STV_STATIC_INLINE_IMPL` before each inclusion to make all functio
 | `stv_empty(stv)`               | Check if the view is empty.                             |
 
 ### Counting and Predicates
-| Function                 | Description                                                          |
-|--------------------------|----------------------------------------------------------------------|
-| `stv_count(stv, fn)`     | Count the characters satisfying a classification function.           |
-| `stv_countChar(stv, ch)` | Count the occurrences of a specific character.                       |
-| `stv_every(stv, fn)`     | Returns true if all characters satisfy the classification function.  |
-| `stv_everyChar(stv, ch)` | Returns true if all characters equal the given character.            |
-| `stv_some(stv, fn)`      | Returns true if at least one character satisfies the classification. |
-| `stv_someChar(stv, ch)`  | Returns true if the view contains the given character at least once. |
+| Function                    | Description                                                          |
+|-----------------------------|----------------------------------------------------------------------|
+| `stv_count(stv, fn)`        | Count the characters satisfying a classification function.           |
+| `stv_countChar(stv, ch)`    | Count the occurrences of a specific character.                       |
+| `stv_countSubstr(stv, sub)` | Count non-overlapping occurrences of a substring.                    |
+| `stv_every(stv, fn)`        | Returns true if all characters satisfy the classification function.  |
+| `stv_everyChar(stv, ch)`    | Returns true if all characters equal the given character.            |
+| `stv_some(stv, fn)`         | Returns true if at least one character satisfies the classification. |
+| `stv_someChar(stv, ch)`     | Returns true if the view contains the given character at least once. |
 
 ### Utility Methods
 | Function / Macro               | Description                                                |

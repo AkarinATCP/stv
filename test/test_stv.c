@@ -553,7 +553,7 @@ void test_stv_diff_both_empty(void) {
 }
 
 /* ========================================================================== */
-/*  count / countChar / every / everyChar / some / someChar                   */
+/*  count / countChar /  countSubstr                                          */
 /* ========================================================================== */
 
 void test_stv_count_digits(void) {
@@ -580,6 +580,22 @@ void test_stv_countChar_empty(void) {
     strview sv = stv_nullstv;
     TEST_ASSERT_EQUAL_size_t(stv_npos, stv_countChar(sv, 'a'));
 }
+
+void test_stv_countSubstr_normal(void) {
+    strview sv  = stv_literal("abcabcdeabcabed");
+    strview sub = stv_literal("abc");
+    TEST_ASSERT_EQUAL_size_t(3, stv_countSubstr(sv, sub));
+}
+
+void test_stv_countSubstr_empty(void) {
+    strview sv  = stv_literal("abcabcdeabcabed");
+    strview sub = stv_literal("");
+    TEST_ASSERT_EQUAL_size_t(sv.len, stv_countSubstr(sv, sub));
+}
+
+/* ========================================================================== */
+/*  every / everyChar / some / someChar                                       */
+/* ========================================================================== */
 
 void test_stv_every_digit(void) {
     strview sv = stv_literal("12345");

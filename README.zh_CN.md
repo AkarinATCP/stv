@@ -119,14 +119,15 @@ int main(int argc, char* argv[]) {
 | `stv_empty(stv)`               | 检查视图是否为空。                  |
 
 ### 计数与谓词
-| 函数                     | 描述                                         |
-|--------------------------|----------------------------------------------|
-| `stv_count(stv, fn)`     | 统计通过分类函数 `fn` 的字符数量。           |
-| `stv_countChar(stv, ch)` | 统计给定字符出现的次数。                     |
-| `stv_every(stv, fn)`     | 如果所有字符都满足分类函数，则返回 true。    |
-| `stv_everyChar(stv, ch)` | 如果所有字符都等于给定字符，则返回 true。    |
-| `stv_some(stv, fn)`      | 如果至少有一个字符满足分类函数，则返回 true。|
-| `stv_someChar(stv, ch)`  | 如果至少有一个字符等于给定字符，则返回 true。|
+| 函数                       | 描述                                         |
+|----------------------------|----------------------------------------------|
+| `stv_count(stv, fn)`       | 统计通过分类函数 `fn` 的字符数量。           |
+| `stv_countChar(stv, ch)`   | 统计给定字符出现的次数。                     |
+|`stv_countSubstr(stv, sub)` | 统计给定子视图的不重叠出现次数。             |
+| `stv_every(stv, fn)`       | 如果所有字符都满足分类函数，则返回 true。    |
+| `stv_everyChar(stv, ch)`   | 如果所有字符都等于给定字符，则返回 true。    |
+| `stv_some(stv, fn)`        | 如果至少有一个字符满足分类函数，则返回 true。|
+| `stv_someChar(stv, ch)`    | 如果至少有一个字符等于给定字符，则返回 true。|
 
 ### 工具方法
 | 函数 / 宏                      | 说明                               |
