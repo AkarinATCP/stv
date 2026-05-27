@@ -94,6 +94,9 @@ Or define `LIB_STV_STATIC_INLINE_IMPL` before each inclusion to make all functio
 | `stv_trimStart(stv, charset)` | Remove characters belonging to `charset` from the start.                  |
 | `stv_trimEnd(stv, charset)`   | Remove characters belonging to `charset` from the end.                    |
 | `stv_whitespace`              | (Macro) Predefined whitespace character view constant, used for trimming. |
+| `stv_trimIf(stv, fn)`         | Remove characters satisfying `fn` from both ends.                         |
+| `stv_trimStartIf(stv, fn)`    | Remove characters satisfying `fn` from the start.                         |
+| `stv_trimEndIf(stv, fn)`      | Remove characters satisfying `fn` from the end.                           |
 
 ### Searching
 | Function                      | Description                                                                 |

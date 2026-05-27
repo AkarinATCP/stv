@@ -157,6 +157,69 @@ void test_stv_trim_empty_view(void) {
     TEST_ASSERT_TRUE(stv_empty(trimmed));
 }
 
+void test_stv_trimIf_both(void) {
+    strview sv      = stv_literal("  \t  hello \t ");
+    strview trimmed = stv_trimIf(sv, isspace);
+    TEST_ASSERT_EQUAL_size_t(5, trimmed.len);
+    TEST_ASSERT_EQUAL_CHAR_ARRAY("hello", trimmed.data, 5);
+}
+
+void test_stv_trimIf_null_handle(void) {
+    strview sv      = stv_literal("abc");
+    strview trimmed = stv_trimIf(sv, NULL);
+    TEST_ASSERT_TRUE(stv_equal(sv, trimmed));
+}
+
+void test_stv_trimIf_all_removed(void) {
+    strview sv      = stv_literal(" \t\n\r");
+    strview trimmed = stv_trimIf(sv, isspace);
+    TEST_ASSERT_EQUAL_size_t(0, trimmed.len);
+}
+
+void test_stv_trimIf_empty_view(void) {
+    strview sv      = stv_nullstv;
+    strview trimmed = stv_trimIf(sv, isspace);
+    TEST_ASSERT_TRUE(stv_empty(trimmed));
+}
+
+void test_stv_trimStartIf(void) {
+    strview sv      = stv_literal("   text");
+    strview trimmed = stv_trimStartIf(sv, isspace);
+    TEST_ASSERT_EQUAL_size_t(4, trimmed.len);
+    TEST_ASSERT_EQUAL_CHAR_ARRAY("text", trimmed.data, 4);
+}
+
+void test_stv_trimStartIf_null_handle(void) {
+    strview sv      = stv_literal("abc");
+    strview trimmed = stv_trimStartIf(sv, NULL);
+    TEST_ASSERT_TRUE(stv_equal(sv, trimmed));
+}
+
+void test_stv_trimStartIf_empty_view(void) {
+    strview sv      = stv_nullstv;
+    strview trimmed = stv_trimStartIf(sv, isspace);
+    TEST_ASSERT_TRUE(stv_empty(trimmed));
+}
+
+void test_stv_trimEndIf(void) {
+    strview sv      = stv_literal("text   ");
+    strview trimmed = stv_trimEndIf(sv, isspace);
+    TEST_ASSERT_EQUAL_size_t(4, trimmed.len);
+    TEST_ASSERT_EQUAL_CHAR_ARRAY("text", trimmed.data, 4);
+}
+
+void test_stv_trimEndIf_null_handle(void) {
+    strview sv      = stv_literal("abc");
+    strview trimmed = stv_trimEndIf(sv, NULL);
+    TEST_ASSERT_TRUE(stv_equal(sv, trimmed));
+}
+
+void test_stv_trimEndIf_empty_view(void) {
+    strview sv      = stv_nullstv;
+    strview trimmed = stv_trimEndIf(sv, isspace);
+    TEST_ASSERT_TRUE(stv_empty(trimmed));
+}
+
 /* ========================================================================== */
 /*  stv_split / stv_beforeDelim / stv_afterDelim                              */
 /* ========================================================================== */
@@ -846,6 +909,16 @@ int main(void) {
     RUN_TEST(test_stv_trim_no_op);
     RUN_TEST(test_stv_trim_all_chars_removed);
     RUN_TEST(test_stv_trim_empty_view);
+    RUN_TEST(test_stv_trimIf_both);
+    RUN_TEST(test_stv_trimIf_null_handle);
+    RUN_TEST(test_stv_trimIf_all_removed);
+    RUN_TEST(test_stv_trimIf_empty_view);
+    RUN_TEST(test_stv_trimStartIf);
+    RUN_TEST(test_stv_trimStartIf_null_handle);
+    RUN_TEST(test_stv_trimStartIf_empty_view);
+    RUN_TEST(test_stv_trimEndIf);
+    RUN_TEST(test_stv_trimEndIf_null_handle);
+    RUN_TEST(test_stv_trimEndIf_empty_view);
 
     /* split / beforeDelim / afterDelim */
     RUN_TEST(test_stv_split_normal);

@@ -93,6 +93,9 @@ int main(int argc, char* argv[]) {
 | `stv_trimStart(stv, charset)` | 去除开头属于 `charset` 的字符。        |
 | `stv_trimEnd(stv, charset)`   | 去除结尾属于 `charset` 的字符。        |
 | `stv_whitespace`              |（宏）预定义空白字符视图常量，用于修剪。|
+| `stv_trimIf(stv, fn)`         | 去除两端满足 `fn` 的字符。             |
+| `stv_trimStartIf(stv, fn)`    | 去除开头满足 `fn` 的字符。             |
+| `stv_trimEndIf(stv, fn)`      | 去除结尾满足 `fn` 的字符。             |
 
 ### 搜索
 | 函数                               | 说明                                           |

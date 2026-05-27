@@ -187,6 +187,33 @@ LIB_STV_FN strview stv_trimStart(strview stv, strview charset);
 LIB_STV_FN strview stv_trimEnd(strview stv, strview charset);
 
 /**
+ * @brief Remove any characters satisfying a classification function from the beginning and end of the view
+ *
+ * @param stv Source string view
+ * @param handle Character classification function (e.g., isspace). If NULL, no trimming is performed.
+ * @return A new view with leading and trailing matching characters removed
+ */
+LIB_STV_FN strview stv_trimIf(strview stv, stv_charClassFn handle);
+
+/**
+ * @brief Remove any characters satisfying a classification function from the beginning of the view
+ *
+ * @param stv Source string view
+ * @param handle Character classification function (e.g., isspace). If NULL, no trimming is performed.
+ * @return A new view with leading matching characters removed
+ */
+LIB_STV_FN strview stv_trimStartIf(strview stv, stv_charClassFn handle);
+
+/**
+ * @brief Remove any characters satisfying a classification function from the end of the view
+ *
+ * @param stv Source string view
+ * @param handle Character classification function (e.g., isspace). If NULL, no trimming is performed.
+ * @return A new view with trailing matching characters removed
+ */
+LIB_STV_FN strview stv_trimEndIf(strview stv, stv_charClassFn handle);
+
+/**
  * @brief Search for a substring within a text view (automatic algorithm selection)
  *
  * Uses naive search when the pattern length is <= 4, otherwise uses Sunday search.
@@ -635,6 +662,45 @@ LIB_STV_FN strview stv_trimEnd(strview stv, strview charset) {
     while (ch > start_pos) {
         ch--;
         if (chs[(unsigned char)*ch]) {
+            tc++;
+        } else {
+            break;
+        }
+    }
+    return stv_makestv(stv.data, stv.len - tc);
+}
+
+LIB_STV_FN strview stv_trimIf(strview stv, stv_charClassFn handle) {
+    return stv_trimStartIf(stv_trimEndIf(stv, handle), handle);
+}
+
+LIB_STV_FN strview stv_trimStartIf(strview stv, stv_charClassFn handle) {
+    if (stv_empty(stv) || handle == nullptr) {
+        return stv;
+    }
+    const char* end_pos = stv.data + stv.len;
+    const char* ch      = stv.data;
+    size_t      tc      = 0;
+    while (ch < end_pos) {
+        if (handle(*ch)) {
+            ch++, tc++;
+        } else {
+            break;
+        }
+    }
+    return stv_makestv(stv.data + tc, stv.len - tc);
+}
+
+LIB_STV_FN strview stv_trimEndIf(strview stv, stv_charClassFn handle) {
+    if (stv_empty(stv) || handle == nullptr) {
+        return stv;
+    }
+    const char* start_pos = stv.data;
+    const char* ch        = stv.data + stv.len;
+    size_t      tc        = 0;
+    while (ch > start_pos) {
+        ch--;
+        if (handle(*ch)) {
             tc++;
         } else {
             break;
