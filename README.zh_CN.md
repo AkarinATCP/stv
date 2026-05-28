@@ -23,7 +23,7 @@
 
 int main(int argc, char* argv[]) {
     strview myview = stv_new("This is a example string: Hello, world!");
-    myview = stv_slice(myview, stv_lastChar(myview, 'H'), stv_end);  
+    myview = stv_slice(myview, stv_lastIndex(myview, 'H', false), stv_end);  
 
     printf("myview: " stv_PFFMT "\n", stv_PFARG(myview));   // Hello, world!
     return 0;
@@ -53,104 +53,25 @@ int main(int argc, char* argv[]) {
 > `strview` 为只读视图，只包含源字符串的指针和长度信息，不拥有数据。  
 > 这意味着必须保证源字符串的生命周期长于视图。
 
-## API 概览
+## API 参考
 
-### 类型定义
-| 定义              | 类型 / 成员         |说明                                                 |
-|-------------------|---------------------|-----------------------------------------------------|
-| `strview`         | `struct{data, len}` | 字符串视图类型，包含源字符串的指针和视图长度。      |
-| `strview.data`    | `const char*`       | 指向源字符串的只读指针。                            |
-| `strview.len`     | `size_t`            | 视图长度。                                          |
-| `stv_charClassFn` | `int (*)(int)`      | 字符分类函数指针类型，用于 count/every/some 等方法。|
+主要功能分组速览：
 
-### 创建视图
-| 函数 / 宏                          | 说明                                                    |
-|------------------------------------|---------------------------------------------------------|
-| `stv_new(cstr)`                    | 从 C 字符串创建视图。                                   |
-| `stv_create(str, endchar, maxlen)` | 从连续字符序列创建视图，需要指定终止字符和最大扫描长度。|
-| `stv_literal(cstr)`                |（宏）用字符串字面量构造视图字面量。                     |
-| `stv_makestv(data, len)`           |（宏）用指针和长度构造视图字面量。                       |
-| `stv_nullstv`                      |（宏）预定义空视图常量。                                 |
+| 分类        | 关键函数 / 宏                                                                                         |
+|-------------|-------------------------------------------------------------------------------------------------------|
+| 创建        | `stv_new`, `stv_create`, `stv_literal`, `stv_makestv`, `stv_nullstv`                                  |
+| 切片        | `stv_slice`, `stv_removeStart`, `stv_removeEnd`, `stv_removePrefix`, `stv_removeSuffix`               |
+| 分割        | `stv_split`, `stv_splitLines`, `stv_splitWords`, `stv_beforeDelim`, `stv_afterDelim`                  |
+| 修剪        | `stv_trim`, `stv_trimStart`, `stv_trimEnd`, `stv_whitespace`                                          |
+| 搜索        | `stv_search`, `stv_rev_search`, `stv_firstIndex`, `stv_lastIndex`, `stv_firstDiff`, `stv_lastDiff`    |
+| 比较        | `stv_compare`, `stv_equal`, `stv_same`, `stv_startsWith`, `stv_endsWith`, `stv_contains`, `stv_empty` |
+| 计数 / 谓词 | `stv_count`, `stv_every`, `stv_some`                                                                  |
+| 工具函数    | `stv_front`, `stv_back`, `stv_at`, `stv_swap`, `stv_cstr`, `stv_hash`, `stv_PFARG`, `stv_PFFMT`       |
 
-### 切片
-| 函数 / 宏                     | 说明                                                      |
-|-------------------------------|-----------------------------------------------------------|
-| `stv_slice(stv, begin, end)`  | 获取 `[begin, end)` 切片的子视图。                        |
-| `stv_begin`                   |（宏）预定义视图起始位置常量，用于切片。                   |
-| `stv_end`                     |（宏）预定义视图结束位置常量，用于切片。                   |
-| `stv_removeStart(stv, len)`     | 从视图的开头移除 `len` 个字节。                         |
-| `stv_removeEnd(stv, len)`       | 从视图的结尾移除 `len` 个字节。                         |
-| `stv_removePrefix(stv, prefix)` | 如果视图以 `prefix` 开头，则从开头移除它；否则保持不变。|
-| `stv_removeSuffix(stv, suffix)` | 如果视图以 `suffix` 结尾，则从结尾移除它；否则保持不变。|
-
-### 分割
-| 函数                              | 描述                                                                     |
-|-----------------------------------|--------------------------------------------------------------------------|
-| `stv_split(stv, sep, &remaining)` | 在第一次出现的 `sep` 处分割。返回分割前的部分，剩余部分存储在 `*rem` 中。|
-| `stv_beforeDelim(stv, delim)`     | 返回视图中第一次出现 `delim` 之前的部分。                                |
-| `stv_afterDelim(stv, delim)`      | 返回视图中第一次出现 `delim` 之后的部分。                                |
-
-### 修剪
-| 函数 / 宏                     | 说明                                   |
-|-------------------------------|----------------------------------------|
-| `stv_trim(stv, charset)`      | 去除两端属于 `charset` 的字符。        |
-| `stv_trimStart(stv, charset)` | 去除开头属于 `charset` 的字符。        |
-| `stv_trimEnd(stv, charset)`   | 去除结尾属于 `charset` 的字符。        |
-| `stv_whitespace`              |（宏）预定义空白字符视图常量，用于修剪。|
-| `stv_trimIf(stv, fn)`         | 去除两端满足 `fn` 的字符。             |
-| `stv_trimStartIf(stv, fn)`    | 去除开头满足 `fn` 的字符。             |
-| `stv_trimEndIf(stv, fn)`      | 去除结尾满足 `fn` 的字符。             |
-
-### 搜索
-| 函数                               | 说明                                           |
-|------------------------------------|------------------------------------------------|
-| `stv_search(text, pat)`            | 在 `text` 中搜索 `pat` 并返回第一次出现的位置。|
-| `stv_naiveSearch(text, pat)`       | 朴素搜索算法实现。                             |
-| `stv_sundaySearch(text, pat)`      | Sunday 搜索算法实现。                          |
-| `stv_firstChar(stv, ch)`           | 第一个字符 `ch` 的位置。                       |
-| `stv_lastChar(stv, ch)`            | 最后一个字符 `ch` 的位置。                     |
-| `stv_firstNotChar(stv, ch)`        | 第一个不等于 `ch` 的字符位置。                 |
-| `stv_lastNotChar(stv, ch)`         | 最后一个不等于 `ch` 的字符位置。               |
-| `stv_firstDiff(stv_a, stv_b)`      | 两个视图第一个不相同的字符位置。               |
-| `stv_lastDiff(stv_a, stv_b)`       | 两个视图最后一个不相同的字符位置。             |
-
-### 比较与检查
-| 函数                           | 说明                                |
-|--------------------------------|-------------------------------------|
-| `stv_compare(stv_a, stv_b)`    | 字典序比较两个视图。                |
-| `stv_equal(stv_a, stv_b)`      | 逐字节判断内容是否相等。            |
-| `stv_same(stv_a, stv_b)`       | 判断是否引用同一块内存区域。        |
-| `stv_startsWith(text, prefix)` | 检查 `text` 是否以 `prefix` 为前缀。|
-| `stv_endsWith(text, suffix)`   | 检查 `text` 是否以 `suffix` 为后缀。|
-| `stv_contains(text, substr)`   | 检查 `text` 是否包含 `substr` 。    |
-| `stv_empty(stv)`               | 检查视图是否为空。                  |
-
-### 计数与谓词
-| 函数                       | 描述                                         |
-|----------------------------|----------------------------------------------|
-| `stv_count(stv, fn)`       | 统计通过分类函数 `fn` 的字符数量。           |
-| `stv_countChar(stv, ch)`   | 统计给定字符出现的次数。                     |
-|`stv_countSubstr(stv, sub)` | 统计给定子视图的不重叠出现次数。             |
-| `stv_every(stv, fn)`       | 如果所有字符都满足分类函数，则返回 true。    |
-| `stv_everyChar(stv, ch)`   | 如果所有字符都等于给定字符，则返回 true。    |
-| `stv_some(stv, fn)`        | 如果至少有一个字符满足分类函数，则返回 true。|
-| `stv_someChar(stv, ch)`    | 如果至少有一个字符等于给定字符，则返回 true。|
-
-### 工具方法
-| 函数 / 宏                      | 说明                               |
-|--------------------------------|------------------------------------|
-| `stv_front(stv)`               | 获取首字符。                       |
-| `stv_back(stv)`                | 获取尾字符。                       |
-| `stv_swap(&stv_a, &stv_b)`     | 交换两个视图。                     |
-| `stv_cstr(stv, buf, size)`     | 复制视图内容到 C 字符串缓冲区。    |
-| `stv_rev_cstr(stv, buf, size)` | 逆序复制视图内容到 C 字符串缓冲区。|
-| `stv_PFFMT`                    |（宏）`printf` 格式化辅助宏         |
-| `stv_PFARG(v)`                 |（宏）`printf` 格式化辅助宏。       |
-| `stv_npos`                     |（宏）预定义哨兵值常量。            |
-
-详细说明见 [`stv.h`](./include/stv.h) 内的文档注释。
+> [!NOTE]
+> 完整的参数说明、返回值及示例，请访问 [API Reference](docs/zh_CN/api_reference.md) 。
 
 ## 许可证
 
 MIT © 2026 Akarin <akarin@icatcp.work>  
-完整许可证文本见[许可证](./LICENSE)文件。
+完整许可证文本见 [LICENSE](./LICENSE) 文件。
