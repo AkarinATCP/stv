@@ -24,7 +24,7 @@ Supports **C99** and **C++11** or later standards.
 
 int main(int argc, char* argv[]) {
     strview myview = stv_new("This is a example string: Hello, world!");
-    myview = stv_slice(myview, stv_lastChar(myview, 'H'), stv_end);  
+    myview = stv_slice(myview, stv_lastIndex(myview, 'H', false), stv_end);  
 
     printf("myview: " stv_PFFMT "\n", stv_PFARG(myview));   // Hello, world!
     return 0;
@@ -54,101 +54,23 @@ Or define `LIB_STV_STATIC_INLINE_IMPL` before each inclusion to make all functio
 > `strview` is a read-only view, containing only a pointer to the source string and a length, and does not own the data.  
 > This means you must ensure the source string's lifetime exceeds that of the view.
 
-## API Overview
+## API Reference
 
-### Types Definitions
-| Type              | Type / Member       | Description                                                                           |
-|-------------------|---------------------|---------------------------------------------------------------------------------------|
-| `strview`         | `struct{data, len}` | The string view type, containing a pointer to the source string and a length of view. |
-| `strview.data`    | `const char*`       | The pointer of source string.                                                         |
-| `strview.len`     | `size_t`            | The length of view.                                                                   |
-| `stv_charClassFn` | `int (*)(int)`      | Character classification function pointer type. Used with count/every/some.           |
+A quick overview of the main function groups:
 
-### Creating Views
-| Function / Macro                   | Description                                                                                               |
-|------------------------------------|-----------------------------------------------------------------------------------------------------------|
-| `stv_new(cstr)`                    | Create a view from a C string.                                                                            |
-| `stv_create(str, endchar, maxlen)` | Create a view from a contiguous character sequence, specifying the end character and maximum scan length. |
-| `stv_literal(cstr)`                | (Marco) Construct a view literal from a string literal.                                                   |
-| `stv_makestv(data, len)`           | (Macro) Construct a view literal from a pointer and length.                                               |
-| `stv_nullstv`                      | (Macro) Predefined empty view constant.                                                                   |
+| Category           | Key Functions / Macros                                                                                |
+|--------------------|-------------------------------------------------------------------------------------------------------|
+| Creation           | `stv_new`, `stv_create`, `stv_literal`, `stv_makestv`, `stv_nullstv`                                  |
+| Slicing            | `stv_slice`, `stv_removeStart`, `stv_removeEnd`, `stv_removePrefix`, `stv_removeSuffix`               |
+| Splitting          | `stv_split`, `stv_splitLines`, `stv_splitWords`, `stv_beforeDelim`, `stv_afterDelim`                  |
+| Trimming           | `stv_trim`, `stv_trimStart`, `stv_trimEnd`, `stv_whitespace`                                          |
+| Search             | `stv_search`, `stv_rev_search`, `stv_firstIndex`, `stv_lastIndex`, `stv_firstDiff`, `stv_lastDiff`    |
+| Comparison         | `stv_compare`, `stv_equal`, `stv_same`, `stv_startsWith`, `stv_endsWith`, `stv_contains`, `stv_empty` |
+| Count / Predicates | `stv_count`, `stv_every`, `stv_some`                                                                  |
+| Utilities          | `stv_front`, `stv_back`, `stv_at`, `stv_swap`, `stv_cstr`, `stv_hash`, `stv_PFARG`, `stv_PFFMT`       |
 
-### Slicing
-| Function / Macro              | Description                                             |
-|-------------------------------|---------------------------------------------------------|
-| `stv_slice(stv, begin, end)`  | Obtain a sub-view for the slice `[begin, end)`.         |
-| `stv_begin`                   | (Macro) Predefined start position constant for slicing. |
-| `stv_end`                     | (Macro) Predefined end position constant for slicing.   |
-
-### Splitting
-| Function                         | Description                                                                                   |
-|-----------------------------------|----------------------------------------------------------------------------------------------|
-| `stv_split(stv, sep, &remaining)` | Split at the first occurrence of `sep`. Returns the part before, stores remainder in `*rem`. |
-| `stv_beforeDelim(stv, delim)`     | Return the part of the view before the first occurrence of `delim`.                          |
-| `stv_afterDelim(stv, delim)`      | Return the part of the view after the first occurrence of `delim`.                           |
-
-### Trimming
-| Function / Macro              | Description                                                               |
-|-------------------------------|---------------------------------------------------------------------------|
-| `stv_trim(stv, charset)`      | Remove characters belonging to `charset` from both ends.                  |
-| `stv_trimStart(stv, charset)` | Remove characters belonging to `charset` from the start.                  |
-| `stv_trimEnd(stv, charset)`   | Remove characters belonging to `charset` from the end.                    |
-| `stv_whitespace`              | (Macro) Predefined whitespace character view constant, used for trimming. |
-| `stv_trimIf(stv, fn)`         | Remove characters satisfying `fn` from both ends.                         |
-| `stv_trimStartIf(stv, fn)`    | Remove characters satisfying `fn` from the start.                         |
-| `stv_trimEndIf(stv, fn)`      | Remove characters satisfying `fn` from the end.                           |
-
-### Searching
-| Function                          | Description                                                                        |
-|-----------------------------------|------------------------------------------------------------------------------------|
-| `stv_search(text, pat)`           | Search for `pat` in `text` and return the position of the first occurrence.        |
-| `stv_naiveSearch(text, pat)`      | Naive search algorithm implementation.                                             |
-| `stv_sundaySearch(text, pat)`     | Sunday search algorithm implementation.                                            |
-| `stv_rev_search(text, pat)`       | Reverse search for `pat` in `text` and return the position of the last occurrence. |
-| `stv_rev_naiveSearch(text, pat)`  | Naive reverse search algorithm implementation.                                     |
-| `stv_rev_sundaySearch(text, pat)` | Sunday reverse search algorithm implementation.                                    |
-| `stv_firstChar(stv, ch)`          | Position of the first character `ch`.                                              |
-| `stv_lastChar(stv, ch)`           | Position of the last character `ch`.                                               |
-| `stv_firstNotChar(stv, ch)`       | Position of the first character not equal to `ch`.                                 |
-| `stv_lastNotChar(stv, ch)`        | Position of the last character not equal to `ch`.                                  |
-| `stv_firstDiff(stv_a, stv_b)`     | Position of the first differing character between two views.                       |
-| `stv_lastDiff(stv_a, stv_b)`      | Position of the last differing character between two views.                        |
-
-### Comparison and Inspection
-| Function                       | Description                                             |
-|--------------------------------|---------------------------------------------------------|
-| `stv_compare(stv_a, stv_b)`    | Lexicographically compare two views.                    |
-| `stv_equal(stv_a, stv_b)`      | Byte-by-byte comparison to check if contents are equal. |
-| `stv_same(stv_a, stv_b)`       | Check if both views reference the same memory region.   |
-| `stv_startsWith(text, prefix)` | Check if `text` starts with `prefix`.                   |
-| `stv_endsWith(text, suffix)`   | Check if `text` ends with `suffix`.                     |
-| `stv_contains(text, substr)`   | Check if `text` contains `substr`.                      |
-| `stv_empty(stv)`               | Check if the view is empty.                             |
-
-### Counting and Predicates
-| Function                    | Description                                                          |
-|-----------------------------|----------------------------------------------------------------------|
-| `stv_count(stv, fn)`        | Count the characters satisfying a classification function.           |
-| `stv_countChar(stv, ch)`    | Count the occurrences of a specific character.                       |
-| `stv_countSubstr(stv, sub)` | Count non-overlapping occurrences of a substring.                    |
-| `stv_every(stv, fn)`        | Returns true if all characters satisfy the classification function.  |
-| `stv_everyChar(stv, ch)`    | Returns true if all characters equal the given character.            |
-| `stv_some(stv, fn)`         | Returns true if at least one character satisfies the classification. |
-| `stv_someChar(stv, ch)`     | Returns true if the view contains the given character at least once. |
-
-### Utility Methods
-| Function / Macro               | Description                                                |
-|--------------------------------|------------------------------------------------------------|
-| `stv_front(stv)`               | Get the first character.                                   |
-| `stv_back(stv)`                | Get the last character.                                    |
-| `stv_swap(&stv_a, &stv_b)`     | Swap two views.                                            |
-| `stv_cstr(stv, buf, size)`     | Copy view content into a C string buffer.                  |
-| `stv_rev_cstr(stv, buf, size)` | Copy view content in reverse order into a C string buffer. |
-| `stv_PFFMT`                    | (Macro) `printf` formatting helper macro.                  |
-| `stv_PFARG(v)`                 | (Macro) `printf` formatting helper macro.                  |
-| `stv_npos`                     | (Macro) Predefined sentinel value constant.                |
-
-See the documentation comments in [`stv.h`](./include/stv.h) for detailed descriptions.
+> [!NOTE]
+> Complete parameter descriptions, return values, and examples is available in [API Reference](docs/en_US/api_reference.md).
 
 ## License
 

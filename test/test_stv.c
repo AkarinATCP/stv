@@ -4,6 +4,7 @@
  */
 
 #include <ctype.h>
+#include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 
@@ -62,7 +63,7 @@ void test_stv_create_null(void) {
 void test_stv_slice_full_range(void) {
     strview sv = stv_literal("Hello");
     strview s  = stv_slice(sv, stv_begin, stv_end);
-    TEST_ASSERT_TRUE(stv_same(sv, s));
+    TEST_ASSERT_TRUE(stv_equal(sv, s));
 }
 
 void test_stv_slice_begin(void) {
@@ -112,12 +113,136 @@ void test_stv_slice_null_view(void) {
 }
 
 /* ========================================================================== */
+/*  stv_removeStart / stv_removeEnd / stv_removePrefix / stv_removeSuffix     */
+/* ========================================================================== */
+
+void test_stv_removeStart_normal(void) {
+    strview sv = stv_literal("Hello World");
+    strview s  = stv_removeStart(sv, 6);
+    TEST_ASSERT_EQUAL_size_t(5, s.len);
+    TEST_ASSERT_EQUAL_CHAR_ARRAY("World", s.data, 5);
+}
+
+void test_stv_removeStart_zero(void) {
+    strview sv = stv_literal("Hello");
+    strview s  = stv_removeStart(sv, 0);
+    TEST_ASSERT_TRUE(stv_equal(sv, s));
+}
+
+void test_stv_removeStart_exact_length(void) {
+    strview sv = stv_literal("abc");
+    strview s  = stv_removeStart(sv, 3);
+    TEST_ASSERT_TRUE(stv_empty(s));
+}
+
+void test_stv_removeStart_exceeds_length(void) {
+    strview sv = stv_literal("abc");
+    strview s  = stv_removeStart(sv, 10);
+    TEST_ASSERT_TRUE(stv_empty(s));
+}
+
+void test_stv_removeStart_empty_view(void) {
+    strview sv = stv_nullstv;
+    strview s  = stv_removeStart(sv, 5);
+    TEST_ASSERT_TRUE(stv_empty(s));
+}
+
+void test_stv_removeEnd_normal(void) {
+    strview sv = stv_literal("Hello World");
+    strview s  = stv_removeEnd(sv, 6);
+    TEST_ASSERT_EQUAL_size_t(5, s.len);
+    TEST_ASSERT_EQUAL_CHAR_ARRAY("Hello", s.data, 5);
+}
+
+void test_stv_removeEnd_zero(void) {
+    strview sv = stv_literal("Hello");
+    strview s  = stv_removeEnd(sv, 0);
+    TEST_ASSERT_TRUE(stv_equal(sv, s));
+}
+
+void test_stv_removeEnd_exact_length(void) {
+    strview sv = stv_literal("abc");
+    strview s  = stv_removeEnd(sv, 3);
+    TEST_ASSERT_TRUE(stv_empty(s));
+}
+
+void test_stv_removeEnd_exceeds_length(void) {
+    strview sv = stv_literal("abc");
+    strview s  = stv_removeEnd(sv, 5);
+    TEST_ASSERT_TRUE(stv_empty(s));
+}
+
+void test_stv_removeEnd_empty_view(void) {
+    strview sv = stv_nullstv;
+    strview s  = stv_removeEnd(sv, 2);
+    TEST_ASSERT_TRUE(stv_empty(s));
+}
+
+void test_stv_removePrefix_match(void) {
+    strview sv     = stv_literal("http://example.com");
+    strview prefix = stv_literal("http://");
+    strview result = stv_removePrefix(sv, prefix);
+    TEST_ASSERT_EQUAL_size_t(11, result.len);
+    TEST_ASSERT_EQUAL_CHAR_ARRAY("example.com", result.data, 11);
+}
+
+void test_stv_removePrefix_no_match(void) {
+    strview sv     = stv_literal("ftp://example.com");
+    strview prefix = stv_literal("http://");
+    strview result = stv_removePrefix(sv, prefix);
+    TEST_ASSERT_TRUE(stv_equal(sv, result));
+}
+
+void test_stv_removePrefix_empty_prefix(void) {
+    strview sv     = stv_literal("hello");
+    strview prefix = stv_nullstv;
+    strview result = stv_removePrefix(sv, prefix);
+    TEST_ASSERT_TRUE(stv_equal(sv, result));
+}
+
+void test_stv_removePrefix_empty_view(void) {
+    strview sv     = stv_nullstv;
+    strview prefix = stv_literal("a");
+    strview result = stv_removePrefix(sv, prefix);
+    TEST_ASSERT_TRUE(stv_empty(result));
+}
+
+void test_stv_removeSuffix_match(void) {
+    strview sv     = stv_literal("document.txt");
+    strview suffix = stv_literal(".txt");
+    strview result = stv_removeSuffix(sv, suffix);
+    TEST_ASSERT_EQUAL_size_t(8, result.len);
+    TEST_ASSERT_EQUAL_CHAR_ARRAY("document", result.data, 8);
+}
+
+void test_stv_removeSuffix_no_match(void) {
+    strview sv     = stv_literal("document.md");
+    strview suffix = stv_literal(".txt");
+    strview result = stv_removeSuffix(sv, suffix);
+    TEST_ASSERT_TRUE(stv_equal(sv, result));
+}
+
+void test_stv_removeSuffix_empty_suffix(void) {
+    strview sv     = stv_literal("hello");
+    strview suffix = stv_nullstv;
+    strview result = stv_removeSuffix(sv, suffix);
+    TEST_ASSERT_TRUE(stv_equal(sv, result));
+}
+
+void test_stv_removeSuffix_empty_view(void) {
+    strview sv     = stv_nullstv;
+    strview suffix = stv_literal("a");
+    strview result = stv_removeSuffix(sv, suffix);
+    TEST_ASSERT_TRUE(stv_empty(result));
+}
+
+/* ========================================================================== */
 /*  trim functions                                                            */
 /* ========================================================================== */
 
 void test_stv_trim_both(void) {
     strview sv      = stv_literal("  \t  hello \t ");
-    strview trimmed = stv_trim(sv, stv_whitespace);
+    strview trimmed = stv_trimChs(sv, stv_whitespace);
     TEST_ASSERT_EQUAL_size_t(5, trimmed.len);
     TEST_ASSERT_EQUAL_CHAR_ARRAY("hello", trimmed.data, 5);
 }
@@ -125,7 +250,7 @@ void test_stv_trim_both(void) {
 void test_stv_trim_start(void) {
     strview sv      = stv_literal("///path//");
     strview charset = stv_literal("/");
-    strview trimmed = stv_trimStart(sv, charset);
+    strview trimmed = stv_trimStartChs(sv, charset);
     TEST_ASSERT_EQUAL_size_t(6, trimmed.len);
     TEST_ASSERT_EQUAL_CHAR_ARRAY("path//", trimmed.data, 6);
 }
@@ -133,27 +258,27 @@ void test_stv_trim_start(void) {
 void test_stv_trim_end(void) {
     strview sv      = stv_literal("hello---");
     strview charset = stv_literal("-");
-    strview trimmed = stv_trimEnd(sv, charset);
+    strview trimmed = stv_trimEndChs(sv, charset);
     TEST_ASSERT_EQUAL_size_t(5, trimmed.len);
     TEST_ASSERT_EQUAL_CHAR_ARRAY("hello", trimmed.data, 5);
 }
 
 void test_stv_trim_no_op(void) {
     strview sv      = stv_literal("abc");
-    strview trimmed = stv_trim(sv, stv_nullstv);
+    strview trimmed = stv_trimChs(sv, stv_nullstv);
     TEST_ASSERT_TRUE(stv_equal(sv, trimmed));
 }
 
 void test_stv_trim_all_chars_removed(void) {
     strview sv      = stv_literal("xxxx");
     strview charset = stv_literal("x");
-    strview trimmed = stv_trim(sv, charset);
+    strview trimmed = stv_trimChs(sv, charset);
     TEST_ASSERT_EQUAL_size_t(0, trimmed.len);
 }
 
 void test_stv_trim_empty_view(void) {
     strview sv      = stv_nullstv;
-    strview trimmed = stv_trim(sv, stv_whitespace);
+    strview trimmed = stv_trimChs(sv, stv_whitespace);
     TEST_ASSERT_TRUE(stv_empty(trimmed));
 }
 
@@ -375,6 +500,113 @@ void test_stv_after_delim_delim_at_end(void) {
 }
 
 /* ========================================================================== */
+/*  stv_splitLines / stv_splitWords                                           */
+/* ========================================================================== */
+
+void test_stv_splitLines_lf(void) {
+    strview stv = stv_literal("line1\nline2");
+    strview rem;
+    strview line = stv_splitLines(stv, &rem);
+    TEST_ASSERT_EQUAL_size_t(5, line.len);
+    TEST_ASSERT_EQUAL_CHAR_ARRAY("line1", line.data, 5);
+    TEST_ASSERT_EQUAL_size_t(5, rem.len);
+    TEST_ASSERT_EQUAL_CHAR_ARRAY("line2", rem.data, 5);
+}
+
+void test_stv_splitLines_crlf(void) {
+    strview stv = stv_literal("hello\r\nworld");
+    strview rem;
+    strview line = stv_splitLines(stv, &rem);
+    TEST_ASSERT_EQUAL_size_t(5, line.len);
+    TEST_ASSERT_EQUAL_CHAR_ARRAY("hello", line.data, 5);
+    TEST_ASSERT_EQUAL_size_t(5, rem.len);
+    TEST_ASSERT_EQUAL_CHAR_ARRAY("world", rem.data, 5);
+}
+
+void test_stv_splitLines_cr_only(void) {
+    strview stv = stv_literal("foo\rbar");
+    strview rem;
+    strview line = stv_splitLines(stv, &rem);
+    TEST_ASSERT_EQUAL_size_t(3, line.len);
+    TEST_ASSERT_EQUAL_CHAR_ARRAY("foo", line.data, 3);
+    TEST_ASSERT_EQUAL_size_t(3, rem.len);
+    TEST_ASSERT_EQUAL_CHAR_ARRAY("bar", rem.data, 3);
+}
+
+void test_stv_splitLines_no_break(void) {
+    strview stv = stv_literal("single");
+    strview rem;
+    strview line = stv_splitLines(stv, &rem);
+    TEST_ASSERT_TRUE(stv_equal(stv, line));
+    TEST_ASSERT_TRUE(stv_empty(rem));
+}
+
+void test_stv_splitLines_trailing_newline(void) {
+    strview stv = stv_literal("end\n");
+    strview rem;
+    strview line = stv_splitLines(stv, &rem);
+    TEST_ASSERT_EQUAL_size_t(3, line.len);
+    TEST_ASSERT_EQUAL_CHAR_ARRAY("end", line.data, 3);
+    TEST_ASSERT_TRUE(stv_empty(rem));
+}
+
+void test_stv_splitLines_empty(void) {
+    strview stv = stv_nullstv;
+    strview rem;
+    strview line = stv_splitLines(stv, &rem);
+    TEST_ASSERT_TRUE(stv_empty(line));
+}
+
+void test_stv_splitLines_null_remaining(void) {
+    strview stv  = stv_literal("a\nb");
+    strview line = stv_splitLines(stv, NULL);
+    TEST_ASSERT_EQUAL_size_t(1, line.len);
+    TEST_ASSERT_EQUAL_CHAR_ARRAY("a", line.data, 1);
+}
+
+void test_stv_splitWords_normal(void) {
+    strview stv = stv_literal("  hello world  ");
+    strview rem;
+    strview word = stv_splitWords(stv, &rem);
+    TEST_ASSERT_EQUAL_size_t(5, word.len);
+    TEST_ASSERT_EQUAL_CHAR_ARRAY("hello", word.data, 5);
+    TEST_ASSERT_EQUAL_size_t(8, rem.len);
+    TEST_ASSERT_EQUAL_CHAR_ARRAY(" world  ", rem.data, 8);
+}
+
+void test_stv_splitWords_single_word(void) {
+    strview stv = stv_literal("test");
+    strview rem;
+    strview word = stv_splitWords(stv, &rem);
+    TEST_ASSERT_EQUAL_size_t(4, word.len);
+    TEST_ASSERT_EQUAL_CHAR_ARRAY("test", word.data, 4);
+    TEST_ASSERT_TRUE(stv_empty(rem));
+}
+
+void test_stv_splitWords_only_whitespace(void) {
+    strview stv = stv_literal("   \t ");
+    strview rem;
+    strview word = stv_splitWords(stv, &rem);
+    TEST_ASSERT_TRUE(stv_empty(word));
+    TEST_ASSERT_TRUE(stv_empty(rem));
+}
+
+void test_stv_splitWords_empty(void) {
+    strview stv = stv_nullstv;
+    strview rem;
+    strview word = stv_splitWords(stv, &rem);
+    TEST_ASSERT_TRUE(stv_empty(word));
+    /* rem unmodified */
+}
+
+void test_stv_splitWords_null_remaining(void) {
+    strview stv  = stv_literal(" word");
+    strview word = stv_splitWords(stv, NULL);
+    TEST_ASSERT_EQUAL_size_t(4, word.len);
+    TEST_ASSERT_EQUAL_CHAR_ARRAY("word", word.data, 4);
+}
+
+/* ========================================================================== */
 /*  Search functions                                                          */
 /* ========================================================================== */
 
@@ -417,7 +649,6 @@ void test_stv_sunday_search_not_found(void) {
 }
 
 void test_stv_search_uses_sunday(void) {
-    /* With pattern length > 4, should use Sunday algorithm */
     strview text = stv_literal("aaaaabaaaaa");
     strview pat  = stv_literal("aabaa");
     size_t  pos  = stv_search(text, pat);
@@ -425,7 +656,6 @@ void test_stv_search_uses_sunday(void) {
 }
 
 void test_stv_search_fallback_naive(void) {
-    /* Pattern length <= 4 should use naive search */
     strview text = stv_literal("abcdef");
     strview pat  = stv_literal("cd");
     size_t  pos  = stv_search(text, pat);
@@ -534,39 +764,174 @@ void test_stv_rev_sunday_empty_text(void) {
 
 void test_stv_first_char_found(void) {
     strview sv = stv_literal("hello");
-    TEST_ASSERT_EQUAL_size_t(0, stv_firstChar(sv, 'h'));
-    TEST_ASSERT_EQUAL_size_t(4, stv_firstChar(sv, 'o'));
+    TEST_ASSERT_EQUAL_size_t(0, stv_firstChar(sv, 'h', false));
+    TEST_ASSERT_EQUAL_size_t(4, stv_firstChar(sv, 'o', false));
 }
 
 void test_stv_first_char_not_found(void) {
     strview sv = stv_literal("abc");
-    TEST_ASSERT_EQUAL_size_t(stv_npos, stv_firstChar(sv, 'x'));
+    TEST_ASSERT_EQUAL_size_t(stv_npos, stv_firstChar(sv, 'x', false));
 }
 
 void test_stv_first_not_char(void) {
     strview sv = stv_literal("aaabc");
-    TEST_ASSERT_EQUAL_size_t(3, stv_firstNotChar(sv, 'a'));
-    TEST_ASSERT_EQUAL_size_t(stv_npos, stv_firstNotChar(stv_literal("aaa"), 'a'));
+    TEST_ASSERT_EQUAL_size_t(3, stv_firstChar(sv, 'a', true));
+    TEST_ASSERT_EQUAL_size_t(stv_npos, stv_firstChar(stv_literal("aaa"), 'a', true));
 }
 
 void test_stv_last_char(void) {
     strview sv = stv_literal("abracadabra");
-    TEST_ASSERT_EQUAL_size_t(10, stv_lastChar(sv, 'a'));
-    TEST_ASSERT_EQUAL_size_t(stv_npos, stv_lastChar(sv, 'z'));
+    TEST_ASSERT_EQUAL_size_t(10, stv_lastChar(sv, 'a', false));
+    TEST_ASSERT_EQUAL_size_t(stv_npos, stv_lastChar(sv, 'z', false));
 }
 
 void test_stv_last_not_char(void) {
     strview sv = stv_literal("hello---");
-    TEST_ASSERT_EQUAL_size_t(4, stv_lastNotChar(sv, '-'));
-    TEST_ASSERT_EQUAL_size_t(stv_npos, stv_lastNotChar(stv_literal("---"), '-'));
+    TEST_ASSERT_EQUAL_size_t(4, stv_lastChar(sv, '-', true));
+    TEST_ASSERT_EQUAL_size_t(stv_npos, stv_lastChar(stv_literal("---"), '-', true));
 }
 
 void test_stv_char_empty_view(void) {
     strview sv = stv_nullstv;
-    TEST_ASSERT_EQUAL_size_t(stv_npos, stv_firstChar(sv, 'x'));
-    TEST_ASSERT_EQUAL_size_t(stv_npos, stv_firstNotChar(sv, 'x'));
-    TEST_ASSERT_EQUAL_size_t(stv_npos, stv_lastChar(sv, 'x'));
-    TEST_ASSERT_EQUAL_size_t(stv_npos, stv_lastNotChar(sv, 'x'));
+    TEST_ASSERT_EQUAL_size_t(stv_npos, stv_firstChar(sv, 'x', false));
+    TEST_ASSERT_EQUAL_size_t(stv_npos, stv_firstChar(sv, 'x', true));
+    TEST_ASSERT_EQUAL_size_t(stv_npos, stv_lastChar(sv, 'x', false));
+    TEST_ASSERT_EQUAL_size_t(stv_npos, stv_lastChar(sv, 'x', true));
+}
+
+void test_stv_firstCharset_found(void) {
+    strview sv = stv_literal("abc123");
+    TEST_ASSERT_EQUAL_size_t(3, stv_firstCharset(sv, stv_literal("0123456789"), false));
+    TEST_ASSERT_EQUAL_size_t(0, stv_firstCharset(sv, stv_literal("0123456789"), true));
+}
+
+void test_stv_firstCharset_not_found(void) {
+    strview sv = stv_literal("abc");
+    TEST_ASSERT_EQUAL_size_t(stv_npos, stv_firstCharset(sv, stv_literal("123"), false));
+}
+
+void test_stv_lastCharset(void) {
+    strview sv = stv_literal("abc123def456");
+    TEST_ASSERT_EQUAL_size_t(11, stv_lastCharset(sv, stv_literal("0123456789"), false));
+    TEST_ASSERT_EQUAL_size_t(8, stv_lastCharset(sv, stv_literal("0123456789"), true));
+}
+
+void test_stv_firstCharClass_digit(void) {
+    strview sv = stv_literal("abc123");
+    TEST_ASSERT_EQUAL_size_t(3, stv_firstCharClass(sv, isdigit, false));
+    TEST_ASSERT_EQUAL_size_t(0, stv_firstCharClass(sv, isdigit, true));
+}
+
+void test_stv_lastCharClass_digit(void) {
+    strview sv = stv_literal("123abc456");
+    TEST_ASSERT_EQUAL_size_t(8, stv_lastCharClass(sv, isdigit, false));
+    TEST_ASSERT_EQUAL_size_t(5, stv_lastCharClass(sv, isdigit, true));
+}
+
+void test_stv_firstCharset_empty(void) {
+    strview sv = stv_nullstv;
+    TEST_ASSERT_EQUAL_size_t(stv_npos, stv_firstCharset(sv, stv_whitespace, false));
+    TEST_ASSERT_EQUAL_size_t(stv_npos, stv_lastCharset(sv, stv_whitespace, false));
+}
+
+void test_stv_firstCharClass_empty(void) {
+    strview sv = stv_nullstv;
+    TEST_ASSERT_EQUAL_size_t(stv_npos, stv_firstCharClass(sv, isdigit, false));
+    TEST_ASSERT_EQUAL_size_t(stv_npos, stv_lastCharClass(sv, isdigit, false));
+}
+
+/* ========================================================================== */
+/*  Generic macro tests                                                       */
+/* ========================================================================== */
+
+void test_stv_trim_generic_charset(void) {
+    strview sv      = stv_literal("  hello  ");
+    strview trimmed = stv_trim(sv, stv_whitespace);
+    TEST_ASSERT_EQUAL_size_t(5, trimmed.len);
+    TEST_ASSERT_EQUAL_CHAR_ARRAY("hello", trimmed.data, 5);
+}
+
+void test_stv_trim_generic_fn(void) {
+    strview sv      = stv_literal("123abc456");
+    strview trimmed = stv_trim(sv, isdigit);
+    TEST_ASSERT_EQUAL_size_t(3, trimmed.len);
+    TEST_ASSERT_EQUAL_CHAR_ARRAY("abc", trimmed.data, 3);
+}
+
+void test_stv_trimStart_generic(void) {
+    strview sv      = stv_literal("///path");
+    strview trimmed = stv_trimStart(sv, stv_literal("/"));
+    TEST_ASSERT_EQUAL_size_t(4, trimmed.len);
+    TEST_ASSERT_EQUAL_CHAR_ARRAY("path", trimmed.data, 4);
+}
+
+void test_stv_trimEnd_generic(void) {
+    strview sv      = stv_literal("path///");
+    strview trimmed = stv_trimEnd(sv, stv_literal("/"));
+    TEST_ASSERT_EQUAL_size_t(4, trimmed.len);
+    TEST_ASSERT_EQUAL_CHAR_ARRAY("path", trimmed.data, 4);
+}
+
+void test_stv_firstIndex_generic(void) {
+    strview sv = stv_literal("hello123");
+    TEST_ASSERT_EQUAL_size_t(5, stv_firstIndex(sv, stv_literal("0123456789"), false));
+    TEST_ASSERT_EQUAL_size_t(0, stv_firstIndex(sv, 'h', false));
+    TEST_ASSERT_EQUAL_size_t(5, stv_firstIndex(sv, isdigit, false));
+}
+
+void test_stv_lastIndex_generic(void) {
+    strview sv = stv_literal("123hello456");
+    TEST_ASSERT_EQUAL_size_t(10, stv_lastIndex(sv, stv_literal("456"), false));
+    TEST_ASSERT_EQUAL_size_t(7, stv_lastIndex(sv, 'o', false));
+    TEST_ASSERT_EQUAL_size_t(10, stv_lastIndex(sv, isdigit, false));
+}
+
+void test_stv_count_generic(void) {
+    strview sv = stv_literal("a1b2c3");
+    TEST_ASSERT_EQUAL_size_t(3, stv_count(sv, isdigit));
+    TEST_ASSERT_EQUAL_size_t(1, stv_count(sv, '2'));
+    TEST_ASSERT_EQUAL_size_t(1, stv_count(sv, stv_literal("1b")));
+}
+
+void test_stv_every_generic(void) {
+    strview sv = stv_literal("12345");
+    TEST_ASSERT_TRUE(stv_every(sv, isdigit));
+    TEST_ASSERT_FALSE(stv_every(sv, '1'));
+}
+
+void test_stv_some_generic(void) {
+    strview sv = stv_literal("abc1");
+    TEST_ASSERT_TRUE(stv_some(sv, isdigit));
+    TEST_ASSERT_FALSE(stv_some(sv, 'x'));
+}
+
+/* ========================================================================== */
+/*  Hash FUnctions                                                            */
+/* ========================================================================== */
+
+void test_stv_hash_empty(void) {
+    TEST_ASSERT_EQUAL_size_t(0, stv_hash(stv_nullstv));
+    TEST_ASSERT_EQUAL_size_t(0, stv_hash_FNV1a(stv_nullstv));
+}
+
+void test_stv_hash_nonempty(void) {
+    strview sv = stv_literal("hello");
+    size_t  h  = stv_hash(sv);
+    TEST_ASSERT_NOT_EQUAL(0, h);
+    TEST_ASSERT_EQUAL_size_t(h, stv_hash_FNV1a(sv));
+}
+
+void test_stv_hash_consistent(void) {
+    strview a = stv_literal("test");
+    strview b = stv_literal("test");
+    TEST_ASSERT_EQUAL_size_t(stv_hash(a), stv_hash(b));
+}
+
+void test_stv_hash_different(void) {
+    /* not guaranteed but highly likely different */
+    strview a = stv_literal("abc");
+    strview b = stv_literal("xyz");
+    TEST_ASSERT_TRUE(stv_hash(a) != stv_hash(b) || stv_equal(a, b));
 }
 
 /* ========================================================================== */
@@ -616,22 +981,22 @@ void test_stv_diff_both_empty(void) {
 }
 
 /* ========================================================================== */
-/*  count / countChar /  countSubstr                                          */
+/*  count / countChar / countSubstr                                           */
 /* ========================================================================== */
 
 void test_stv_count_digits(void) {
     strview sv = stv_literal("abc123def456");
-    TEST_ASSERT_EQUAL_size_t(6, stv_count(sv, isdigit));
+    TEST_ASSERT_EQUAL_size_t(6, stv_countIf(sv, isdigit));
 }
 
 void test_stv_count_empty(void) {
     strview sv = stv_nullstv;
-    TEST_ASSERT_EQUAL_size_t(stv_npos, stv_count(sv, isdigit));
+    TEST_ASSERT_EQUAL_size_t(stv_npos, stv_countIf(sv, isdigit));
 }
 
 void test_stv_count_null_handle(void) {
     strview sv = stv_literal("abc");
-    TEST_ASSERT_EQUAL_size_t(stv_npos, stv_count(sv, NULL));
+    TEST_ASSERT_EQUAL_size_t(stv_npos, stv_countIf(sv, NULL));
 }
 
 void test_stv_countChar_normal(void) {
@@ -662,17 +1027,17 @@ void test_stv_countSubstr_empty(void) {
 
 void test_stv_every_digit(void) {
     strview sv = stv_literal("12345");
-    TEST_ASSERT_TRUE(stv_every(sv, isdigit));
+    TEST_ASSERT_TRUE(stv_everyIf(sv, isdigit));
 }
 
 void test_stv_every_not_all_digit(void) {
     strview sv = stv_literal("123a");
-    TEST_ASSERT_FALSE(stv_every(sv, isdigit));
+    TEST_ASSERT_FALSE(stv_everyIf(sv, isdigit));
 }
 
 void test_stv_every_empty(void) {
     strview sv = stv_nullstv;
-    TEST_ASSERT_FALSE(stv_every(sv, isdigit));
+    TEST_ASSERT_FALSE(stv_everyIf(sv, isdigit));
 }
 
 void test_stv_everyChar_true(void) {
@@ -692,17 +1057,17 @@ void test_stv_everyChar_empty(void) {
 
 void test_stv_some_digit(void) {
     strview sv = stv_literal("abc1xyz");
-    TEST_ASSERT_TRUE(stv_some(sv, isdigit));
+    TEST_ASSERT_TRUE(stv_someIf(sv, isdigit));
 }
 
 void test_stv_some_no_digit(void) {
     strview sv = stv_literal("abcdef");
-    TEST_ASSERT_FALSE(stv_some(sv, isdigit));
+    TEST_ASSERT_FALSE(stv_someIf(sv, isdigit));
 }
 
 void test_stv_some_empty(void) {
     strview sv = stv_nullstv;
-    TEST_ASSERT_FALSE(stv_some(sv, isdigit));
+    TEST_ASSERT_FALSE(stv_someIf(sv, isdigit));
 }
 
 void test_stv_someChar_found(void) {
@@ -737,7 +1102,6 @@ void test_stv_compare_greater(void) {
 }
 
 void test_stv_compare_shorter(void) {
-    /* "ab" < "abc" */
     TEST_ASSERT_TRUE(stv_compare(stv_literal("ab"), stv_literal("abc")) < 0);
 }
 
@@ -787,9 +1151,13 @@ void test_stv_contains_empty_pat(void) {
 /* ========================================================================== */
 
 void test_stv_same(void) {
-    char* data = strcpy(malloc(sizeof("abc")), "abc");
-    TEST_ASSERT_TRUE(stv_same(stv_literal("abc"), stv_literal("abc")));
-    TEST_ASSERT_FALSE(stv_same(stv_literal(data), stv_literal("abc")));
+    char    buf1[] = "abc";
+    char    buf2[] = "abc";
+    strview a      = stv_makestv(buf1, 3);
+    strview b      = stv_makestv(buf1, 3);
+    strview c      = stv_makestv(buf2, 3);
+    TEST_ASSERT_TRUE(stv_same(a, b));
+    TEST_ASSERT_FALSE(stv_same(a, c));
 }
 
 void test_stv_equal(void) {
@@ -808,7 +1176,7 @@ void test_stv_empty(void) {
 }
 
 /* ========================================================================== */
-/*  stv_front / stv_back                                                      */
+/*  stv_front / stv_back / stv_at                                             */
 /* ========================================================================== */
 
 void test_stv_front_back(void) {
@@ -821,6 +1189,23 @@ void test_stv_front_back_empty(void) {
     strview sv = stv_nullstv;
     TEST_ASSERT_EQUAL_CHAR('\0', stv_front(sv));
     TEST_ASSERT_EQUAL_CHAR('\0', stv_back(sv));
+}
+
+void test_stv_at_valid(void) {
+    strview sv = stv_literal("Hello");
+    TEST_ASSERT_EQUAL_CHAR('H', stv_at(sv, 0));
+    TEST_ASSERT_EQUAL_CHAR('o', stv_at(sv, 4));
+}
+
+void test_stv_at_out_of_bounds(void) {
+    strview sv = stv_literal("Hi");
+    TEST_ASSERT_EQUAL_CHAR('\0', stv_at(sv, 2));
+    TEST_ASSERT_EQUAL_CHAR('\0', stv_at(sv, 100));
+}
+
+void test_stv_at_empty(void) {
+    strview sv = stv_nullstv;
+    TEST_ASSERT_EQUAL_CHAR('\0', stv_at(sv, 0));
 }
 
 /* ========================================================================== */
@@ -839,12 +1224,12 @@ void test_stv_swap(void) {
 
 void test_stv_swap_null_pointers(void) {
     strview a = stv_literal("a");
-    stv_swap(&a, NULL); /* should do nothing */
+    stv_swap(&a, NULL);
     TEST_ASSERT_EQUAL_STRING("a", a.data);
 }
 
 /* ========================================================================== */
-/*  stv_cstr / stv_rev_cstr                                                   */
+/*  stv_cstr / stv_opt_cstr (advanced options)                                */
 /* ========================================================================== */
 
 void test_stv_cstr_success(void) {
@@ -862,12 +1247,36 @@ void test_stv_cstr_too_small(void) {
     TEST_ASSERT_NULL(ret);
 }
 
-void test_stv_rev_cstr(void) {
+void test_stv_opt_cstr_reverse(void) {
     char    buf[6];
     strview sv  = stv_literal("Hello");
-    char*   ret = stv_rev_cstr(sv, buf, sizeof(buf));
+    char*   ret = stv_opt_cstr(sv, buf, sizeof(buf), stv_Reverse);
     TEST_ASSERT_EQUAL_PTR(buf, ret);
     TEST_ASSERT_EQUAL_STRING("olleH", buf);
+}
+
+void test_stv_opt_cstr_upper(void) {
+    char    buf[6];
+    strview sv  = stv_literal("Hello");
+    char*   ret = stv_opt_cstr(sv, buf, sizeof(buf), stv_ToUpper);
+    TEST_ASSERT_EQUAL_STRING("HELLO", buf);
+    TEST_ASSERT_EQUAL_PTR(buf, ret);
+}
+
+void test_stv_opt_cstr_lower(void) {
+    char    buf[6];
+    strview sv  = stv_literal("Hello");
+    char*   ret = stv_opt_cstr(sv, buf, sizeof(buf), stv_ToLower);
+    TEST_ASSERT_EQUAL_STRING("hello", buf);
+    TEST_ASSERT_EQUAL_PTR(buf, ret);
+}
+
+void test_stv_opt_cstr_reverse_upper(void) {
+    char    buf[6];
+    strview sv  = stv_literal("Hello");
+    char*   ret = stv_opt_cstr(sv, buf, sizeof(buf), stv_Reverse | stv_ToUpper);
+    TEST_ASSERT_EQUAL_STRING("OLLEH", buf);
+    TEST_ASSERT_EQUAL_PTR(buf, ret);
 }
 
 void test_stv_cstr_empty_view(void) {
@@ -876,6 +1285,24 @@ void test_stv_cstr_empty_view(void) {
     char*   ret    = stv_cstr(sv, buf, sizeof(buf));
     TEST_ASSERT_EQUAL_PTR(buf, ret);
     TEST_ASSERT_EQUAL_STRING("", buf);
+}
+
+/* ========================================================================== */
+/*  stv_PFARG / stv_PFFMT                                                     */
+/* ========================================================================== */
+
+void test_stv_printf_macro(void) {
+    strview sv = stv_literal("test");
+    char    buf[20];
+    sprintf(buf, "[" stv_PFFMT "]", stv_PFARG(sv));
+    TEST_ASSERT_EQUAL_STRING("[test]", buf);
+}
+
+void test_stv_printf_macro_empty(void) {
+    strview sv = stv_nullstv;
+    char    buf[20];
+    sprintf(buf, "[" stv_PFFMT "]", stv_PFARG(sv));
+    TEST_ASSERT_EQUAL_STRING("[]", buf);
 }
 
 /* ========================================================================== */
@@ -901,6 +1328,26 @@ int main(void) {
     RUN_TEST(test_stv_slice_empty_result);
     RUN_TEST(test_stv_slice_out_of_range);
     RUN_TEST(test_stv_slice_null_view);
+
+    /* stv_removeStart / stv_removeEnd / stv_removePrefix / stv_removeSuffix */
+    RUN_TEST(test_stv_removeStart_normal);
+    RUN_TEST(test_stv_removeStart_zero);
+    RUN_TEST(test_stv_removeStart_exact_length);
+    RUN_TEST(test_stv_removeStart_exceeds_length);
+    RUN_TEST(test_stv_removeStart_empty_view);
+    RUN_TEST(test_stv_removeEnd_normal);
+    RUN_TEST(test_stv_removeEnd_zero);
+    RUN_TEST(test_stv_removeEnd_exact_length);
+    RUN_TEST(test_stv_removeEnd_exceeds_length);
+    RUN_TEST(test_stv_removeEnd_empty_view);
+    RUN_TEST(test_stv_removePrefix_match);
+    RUN_TEST(test_stv_removePrefix_no_match);
+    RUN_TEST(test_stv_removePrefix_empty_prefix);
+    RUN_TEST(test_stv_removePrefix_empty_view);
+    RUN_TEST(test_stv_removeSuffix_match);
+    RUN_TEST(test_stv_removeSuffix_no_match);
+    RUN_TEST(test_stv_removeSuffix_empty_suffix);
+    RUN_TEST(test_stv_removeSuffix_empty_view);
 
     /* trim functions */
     RUN_TEST(test_stv_trim_both);
@@ -940,6 +1387,22 @@ int main(void) {
     RUN_TEST(test_stv_after_delim_empty_delim);
     RUN_TEST(test_stv_after_delim_delim_at_end);
 
+    /* splitLines */
+    RUN_TEST(test_stv_splitLines_lf);
+    RUN_TEST(test_stv_splitLines_crlf);
+    RUN_TEST(test_stv_splitLines_cr_only);
+    RUN_TEST(test_stv_splitLines_no_break);
+    RUN_TEST(test_stv_splitLines_trailing_newline);
+    RUN_TEST(test_stv_splitLines_empty);
+    RUN_TEST(test_stv_splitLines_null_remaining);
+
+    /* splitWords */
+    RUN_TEST(test_stv_splitWords_normal);
+    RUN_TEST(test_stv_splitWords_single_word);
+    RUN_TEST(test_stv_splitWords_only_whitespace);
+    RUN_TEST(test_stv_splitWords_empty);
+    RUN_TEST(test_stv_splitWords_null_remaining);
+
     /* search functions */
     RUN_TEST(test_stv_naive_search_found);
     RUN_TEST(test_stv_naive_search_not_found);
@@ -974,6 +1437,30 @@ int main(void) {
     RUN_TEST(test_stv_last_char);
     RUN_TEST(test_stv_last_not_char);
     RUN_TEST(test_stv_char_empty_view);
+    RUN_TEST(test_stv_firstCharset_found);
+    RUN_TEST(test_stv_firstCharset_not_found);
+    RUN_TEST(test_stv_lastCharset);
+    RUN_TEST(test_stv_firstCharClass_digit);
+    RUN_TEST(test_stv_lastCharClass_digit);
+    RUN_TEST(test_stv_firstCharset_empty);
+    RUN_TEST(test_stv_firstCharClass_empty);
+
+    /* generic macros */
+    RUN_TEST(test_stv_trim_generic_charset);
+    RUN_TEST(test_stv_trim_generic_fn);
+    RUN_TEST(test_stv_trimStart_generic);
+    RUN_TEST(test_stv_trimEnd_generic);
+    RUN_TEST(test_stv_firstIndex_generic);
+    RUN_TEST(test_stv_lastIndex_generic);
+    RUN_TEST(test_stv_count_generic);
+    RUN_TEST(test_stv_every_generic);
+    RUN_TEST(test_stv_some_generic);
+
+    /* hash functions */
+    RUN_TEST(test_stv_hash_empty);
+    RUN_TEST(test_stv_hash_nonempty);
+    RUN_TEST(test_stv_hash_consistent);
+    RUN_TEST(test_stv_hash_different);
 
     /* firstDiff / lastDiff */
     RUN_TEST(test_stv_first_diff_same);
@@ -984,12 +1471,16 @@ int main(void) {
     RUN_TEST(test_stv_diff_with_empty);
     RUN_TEST(test_stv_diff_both_empty);
 
-    /* count / every / some */
+    /* count / countChar / countSubstr */
     RUN_TEST(test_stv_count_digits);
     RUN_TEST(test_stv_count_empty);
     RUN_TEST(test_stv_count_null_handle);
     RUN_TEST(test_stv_countChar_normal);
     RUN_TEST(test_stv_countChar_empty);
+    RUN_TEST(test_stv_countSubstr_normal);
+    RUN_TEST(test_stv_countSubstr_empty);
+
+    /* every / everyChar / some / someChar */
     RUN_TEST(test_stv_every_digit);
     RUN_TEST(test_stv_every_not_all_digit);
     RUN_TEST(test_stv_every_empty);
@@ -1026,16 +1517,26 @@ int main(void) {
     /* front / back */
     RUN_TEST(test_stv_front_back);
     RUN_TEST(test_stv_front_back_empty);
+    RUN_TEST(test_stv_at_valid);
+    RUN_TEST(test_stv_at_out_of_bounds);
+    RUN_TEST(test_stv_at_empty);
 
     /* swap */
     RUN_TEST(test_stv_swap);
     RUN_TEST(test_stv_swap_null_pointers);
 
-    /* cstr / rev_cstr */
+    /* cstr / opt_cstr */
     RUN_TEST(test_stv_cstr_success);
     RUN_TEST(test_stv_cstr_too_small);
-    RUN_TEST(test_stv_rev_cstr);
+    RUN_TEST(test_stv_opt_cstr_reverse);
+    RUN_TEST(test_stv_opt_cstr_upper);
+    RUN_TEST(test_stv_opt_cstr_lower);
+    RUN_TEST(test_stv_opt_cstr_reverse_upper);
     RUN_TEST(test_stv_cstr_empty_view);
+
+    /* printf macros */
+    RUN_TEST(test_stv_printf_macro);
+    RUN_TEST(test_stv_printf_macro_empty);
 
     return UNITY_END();
 }
