@@ -1018,7 +1018,9 @@ Copy the view content with optional transformations (case change, reversal).
 
 ### stv_PFARG / stv_PFFMT
 ```c
-#define stv_PFARG(stv) (int)(...), (...)
+#define stv_PFARG(stv)                                                         \
+    (int)(stv_empty(stv) ? 0 : (stv).len > INT_MAX ? INT_MAX : (stv).len),     \
+    (stv_empty(stv) ? "" : (stv).data)
 #define stv_PFFMT       "%.*s"
 ```
 Helper macros for `printf`‑style formatting of a string view.
@@ -1057,4 +1059,3 @@ Sentinel value returned by search/index functions to indicate “not found”.
 #define stv_whitespace stv_literal(" \r\n\t\v\f")
 ```
 Predefined view containing common whitespace characters (space, CR, LF, tab, vertical tab, form feed). Useful for trimming and splitting.
-```

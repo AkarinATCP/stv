@@ -1016,7 +1016,9 @@ char* stv_opt_cstr(strview stv, char* mem, size_t size, stv_cstrOptions opts);
 
 ### stv_PFARG / stv_PFFMT
 ```c
-#define stv_PFARG(stv) (int)(...), (...)
+#define stv_PFARG(stv)                                                         \
+    (int)(stv_empty(stv) ? 0 : (stv).len > INT_MAX ? INT_MAX : (stv).len),     \
+    (stv_empty(stv) ? "" : (stv).data)
 #define stv_PFFMT       "%.*s"
 ```
 用于 `printf` 风格格式化字符串视图的辅助宏。
@@ -1055,4 +1057,3 @@ printf("data: " stv_PFFMT "\n", stv_PFARG(myview));
 #define stv_whitespace stv_literal(" \r\n\t\v\f")
 ```
 包含常见空白字符（空格、CR、LF、制表符、垂直制表符、换页符）的预定义视图，常用于修剪和分割。
-```
