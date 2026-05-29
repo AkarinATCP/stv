@@ -5,6 +5,7 @@
 
 #include <ctype.h>
 #include <inttypes.h>
+#include <stddef.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -1210,6 +1211,52 @@ void test_stv_at_empty(void) {
 }
 
 /* ========================================================================== */
+/*  stv_forEach                                                               */
+/* ========================================================================== */
+
+static int     foreach_call_count;
+static char    foreach_last_char;
+static size_t  foreach_last_index;
+static strview foreach_last_view;
+
+static void callback_foreach_test(char ch, size_t idx, strview ctx) {
+    foreach_call_count++;
+    foreach_last_char  = ch;
+    foreach_last_index = idx;
+    foreach_last_view  = ctx;
+}
+
+static void callback_foreach_empty(char ch, size_t idx, strview ctx) {
+    TEST_FAIL_MESSAGE("forEach callback should not be called on empty view");
+}
+
+void test_stv_forEach_empty(void) {
+    stv_forEach(stv_nullstv, callback_foreach_empty);
+}
+
+void test_stv_forEach_normal(void) {
+    strview sv         = stv_literal("abc");
+    foreach_call_count = 0;
+    stv_forEach(sv, callback_foreach_test);
+
+    TEST_ASSERT_EQUAL_INT(3, foreach_call_count);
+    TEST_ASSERT_EQUAL_CHAR('c', foreach_last_char);
+    TEST_ASSERT_EQUAL_size_t(2, foreach_last_index);
+    TEST_ASSERT_TRUE(stv_equal(sv, foreach_last_view));
+}
+
+void test_stv_forEach_single_char(void) {
+    strview sv         = stv_literal("X");
+    foreach_call_count = 0;
+    stv_forEach(sv, callback_foreach_test);
+
+    TEST_ASSERT_EQUAL_INT(1, foreach_call_count);
+    TEST_ASSERT_EQUAL_CHAR('X', foreach_last_char);
+    TEST_ASSERT_EQUAL_size_t(0, foreach_last_index);
+    TEST_ASSERT_TRUE(stv_equal(sv, foreach_last_view));
+}
+
+/* ========================================================================== */
 /*  stv_swap                                                                  */
 /* ========================================================================== */
 
@@ -1863,6 +1910,11 @@ int main(void) {
     RUN_TEST(test_stv_at_valid);
     RUN_TEST(test_stv_at_out_of_bounds);
     RUN_TEST(test_stv_at_empty);
+
+    /* stv_forEach */
+    RUN_TEST(test_stv_forEach_empty);
+    RUN_TEST(test_stv_forEach_normal);
+    RUN_TEST(test_stv_forEach_single_char);
 
     /* swap */
     RUN_TEST(test_stv_swap);

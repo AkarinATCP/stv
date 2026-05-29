@@ -88,6 +88,15 @@ struct stv_strview_t {
 typedef int (*stv_charClassFn)(int);
 
 /**
+ * @brief Callback type for stv_forEach
+ *
+ * @param ch  Current character
+ * @param idx Zero-based index of the character
+ * @param ctx The original strview passed to stv_forEach
+ */
+typedef void (*stv_forEachFn)(char ch, size_t idx, strview ctx);
+
+/**
  * @brief Output options for stv_opt_cstr (bitwise combinable)
  *
  * Each option can be combined using bitwise OR. They control character case
@@ -741,6 +750,19 @@ LIB_STV_FN char stv_back(strview stv);
  * @return The character at idx, or '\0' if out of range
  */
 LIB_STV_FN char stv_at(strview stv, size_t idx);
+
+/**
+ * @brief Iterate over each character of a string view
+ *
+ * Calls the provided callback for each character in the view, passing the character,
+ * its index, and the original view (as a value copy) for context.
+ *
+ * If the view is empty, the callback is never invoked.
+ *
+ * @param stv      The string view to iterate over
+ * @param callback Callback function of type stv_forEachFn
+ */
+LIB_STV_FN void stv_forEach(strview stv, stv_forEachFn callback);
 
 /**
  * @brief Swap the contents of two string views
@@ -1559,6 +1581,15 @@ LIB_STV_FN char stv_back(strview stv) {
 
 LIB_STV_FN char stv_at(strview stv, size_t idx) {
     return ((stv_empty(stv) || idx >= stv.len) ? '\0' : stv.data[idx]);
+}
+
+LIB_STV_FN void stv_forEach(strview stv, stv_forEachFn callback) {
+    if (!stv_empty(stv)) {
+        const char* chr = stv.data;
+        for (size_t idx = 0; idx < stv.len; idx++, chr++) {
+            callback(*chr, idx, stv);
+        }
+    }
 }
 
 LIB_STV_FN void stv_swap(strview* stv_left, strview* stv_right) {

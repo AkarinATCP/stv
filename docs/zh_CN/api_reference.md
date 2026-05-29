@@ -10,6 +10,7 @@
 - [类型](#类型)
   - [strview](#strview)
   - [stv_charClassFn](#stv_charclassfn)
+  - [stv_forEachFn](#stv_foreachfn)
   - [stv_cstrOptions](#stv_cstroptions)
 - [创建](#创建)
   - [stv_new](#stv_new)
@@ -92,6 +93,7 @@
   - [stv_front](#stv_front)
   - [stv_back](#stv_back)
   - [stv_at](#stv_at)
+  - [stv_forEach](#stv_foreach)
   - [stv_swap](#stv_swap)
   - [stv_hash](#stv_hash)
   - [stv_hash_FNV1a](#stv_hash_fnv1a)
@@ -132,6 +134,15 @@ struct stv_strview_t {
 typedef int (*stv_charClassFn)(int);
 ```
 字符分类函数指针类型。应表现为标准 `is*` 系列函数（如 `isdigit`、`isspace`）——若字符属于该类则返回非零值，否则返回零。
+
+### stv_forEachFn
+```c
+typedef void (*stv_forEachFn)(char ch, size_t idx, strview ctx);
+```
+[`stv_forEach`](#stv_foreach) 的回调函数指针类型。
+- `ch` : 当前字符。
+- `idx` : 字符的从零开始的索引。
+- `ctx` : 迭代传入的原始 `strview`。
 
 ### stv_cstrOptions
 ```c
@@ -952,6 +963,19 @@ char stv_at(strview stv, size_t idx);
 
 **返回值：**
 - `idx` 处的字符，若越界或视图为空返回 `'\0'`。
+
+### stv_forEach
+```c
+void stv_forEach(strview stv, stv_forEachFn callback);
+```
+遍历视图中的每个字符。回调接收字符、其索引以及作为上下文的原始视图。若视图为空，则不会调用回调。
+
+**参数：**
+- `stv` : 要遍历的视图。
+- `callback` : 类型为 [`stv_forEachFn`](#stv_foreachfn) 的回调。
+
+**返回值：**
+- 无。
 
 ### stv_swap
 ```c

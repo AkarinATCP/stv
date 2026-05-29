@@ -11,6 +11,7 @@
 - [Types](#types)
   - [strview](#strview)
   - [stv_charClassFn](#stv_charclassfn)
+  - [stv_forEachFn](#stv_foreachfn)
   - [stv_cstrOptions](#stv_cstroptions)
 - [Creation](#creation)
   - [stv_new](#stv_new)
@@ -93,6 +94,7 @@
   - [stv_front](#stv_front)
   - [stv_back](#stv_back)
   - [stv_at](#stv_at)
+  - [stv_forEach](#stv_foreach)
   - [stv_swap](#stv_swap)
   - [stv_hash](#stv_hash)
   - [stv_hash_FNV1a](#stv_hash_fnv1a)
@@ -133,6 +135,15 @@ The string view type. Represents a read-only fragment of a string, not null-term
 typedef int (*stv_charClassFn)(int);
 ```
 Function pointer type for character classification. Should behave like the standard `is*` functions (e.g., `isdigit`, `isspace`) – returns non-zero if the character belongs to the class, zero otherwise.
+
+### stv_forEachFn
+```c
+typedef void (*stv_forEachFn)(char ch, size_t idx, strview ctx);
+```
+Callback function pointer type for [`stv_forEach`](#stv_foreach).
+- `ch` : Current character.
+- `idx` : Zero-based index of the character.
+- `ctx` : The original `strview` passed to the iteration.
 
 ### stv_cstrOptions
 ```c
@@ -954,6 +965,19 @@ Access the character at the specified index.
 
 **Return:**
 - Character at `idx`, or `'\0'` if out of bounds or view empty.
+
+### stv_forEach
+```c
+void stv_forEach(strview stv, stv_forEachFn callback);
+```
+Iterate over each character of the view. The callback receives the character, its index, and the original view as context. If the view is empty, the callback is never called.
+
+**Parameters:**
+- `stv` : View to iterate.
+- `callback` : Callback of type [`stv_forEachFn`](#stv_foreachfn).
+
+**Return:**
+- None.
 
 ### stv_swap
 ```c
