@@ -4,6 +4,8 @@
  */
 
 #include <ctype.h>
+#include <inttypes.h>
+#include <stddef.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -1209,6 +1211,52 @@ void test_stv_at_empty(void) {
 }
 
 /* ========================================================================== */
+/*  stv_forEach                                                               */
+/* ========================================================================== */
+
+static int     foreach_call_count;
+static char    foreach_last_char;
+static size_t  foreach_last_index;
+static strview foreach_last_view;
+
+static void callback_foreach_test(char ch, size_t idx, strview ctx) {
+    foreach_call_count++;
+    foreach_last_char  = ch;
+    foreach_last_index = idx;
+    foreach_last_view  = ctx;
+}
+
+static void callback_foreach_empty(char ch, size_t idx, strview ctx) {
+    TEST_FAIL_MESSAGE("forEach callback should not be called on empty view");
+}
+
+void test_stv_forEach_empty(void) {
+    stv_forEach(stv_nullstv, callback_foreach_empty);
+}
+
+void test_stv_forEach_normal(void) {
+    strview sv         = stv_literal("abc");
+    foreach_call_count = 0;
+    stv_forEach(sv, callback_foreach_test);
+
+    TEST_ASSERT_EQUAL_INT(3, foreach_call_count);
+    TEST_ASSERT_EQUAL_CHAR('c', foreach_last_char);
+    TEST_ASSERT_EQUAL_size_t(2, foreach_last_index);
+    TEST_ASSERT_TRUE(stv_equal(sv, foreach_last_view));
+}
+
+void test_stv_forEach_single_char(void) {
+    strview sv         = stv_literal("X");
+    foreach_call_count = 0;
+    stv_forEach(sv, callback_foreach_test);
+
+    TEST_ASSERT_EQUAL_INT(1, foreach_call_count);
+    TEST_ASSERT_EQUAL_CHAR('X', foreach_last_char);
+    TEST_ASSERT_EQUAL_size_t(0, foreach_last_index);
+    TEST_ASSERT_TRUE(stv_equal(sv, foreach_last_view));
+}
+
+/* ========================================================================== */
 /*  stv_swap                                                                  */
 /* ========================================================================== */
 
@@ -1279,12 +1327,354 @@ void test_stv_opt_cstr_reverse_upper(void) {
     TEST_ASSERT_EQUAL_PTR(buf, ret);
 }
 
+void test_stv_opt_cstr_swapcase(void) {
+    char    buf[6];
+    strview sv  = stv_literal("Str%1");
+    char*   ret = stv_opt_cstr(sv, buf, sizeof(buf), stv_ToUpper | stv_ToLower);
+    TEST_ASSERT_EQUAL_STRING("sTR%1", buf);
+    TEST_ASSERT_EQUAL_PTR(buf, ret);
+}
+
 void test_stv_cstr_empty_view(void) {
     char    buf[2] = {0};
     strview sv     = stv_nullstv;
     char*   ret    = stv_cstr(sv, buf, sizeof(buf));
     TEST_ASSERT_EQUAL_PTR(buf, ret);
     TEST_ASSERT_EQUAL_STRING("", buf);
+}
+
+/* ========================================================================== */
+/*  stv_ch2digit                                                              */
+/* ========================================================================== */
+
+void test_stv_ch2digit_digits(void) {
+    TEST_ASSERT_EQUAL_INT(0, stv_ch2digit('0'));
+    TEST_ASSERT_EQUAL_INT(9, stv_ch2digit('9'));
+}
+
+void test_stv_ch2digit_uppercase(void) {
+    TEST_ASSERT_EQUAL_INT(10, stv_ch2digit('A'));
+    TEST_ASSERT_EQUAL_INT(35, stv_ch2digit('Z'));
+}
+
+void test_stv_ch2digit_lowercase(void) {
+    TEST_ASSERT_EQUAL_INT(10, stv_ch2digit('a'));
+    TEST_ASSERT_EQUAL_INT(35, stv_ch2digit('z'));
+}
+
+void test_stv_ch2digit_invalid(void) {
+    TEST_ASSERT_EQUAL_INT(-1, stv_ch2digit('/'));
+    TEST_ASSERT_EQUAL_INT(-1, stv_ch2digit(':'));
+    TEST_ASSERT_EQUAL_INT(-1, stv_ch2digit('@'));
+    TEST_ASSERT_EQUAL_INT(-1, stv_ch2digit('['));
+    TEST_ASSERT_EQUAL_INT(-1, stv_ch2digit('`'));
+    TEST_ASSERT_EQUAL_INT(-1, stv_ch2digit('{'));
+    TEST_ASSERT_EQUAL_INT(-1, stv_ch2digit(' '));
+}
+
+/* ========================================================================== */
+/*  stv_parseIntBase                                                          */
+/* ========================================================================== */
+
+void test_stv_parseIntBase_empty(void) {
+    strview rem;
+    int     base = stv_parseIntBase(stv_nullstv, &rem);
+    TEST_ASSERT_EQUAL_INT(0, base);
+    TEST_ASSERT_TRUE(stv_empty(rem));
+}
+
+void test_stv_parseIntBase_no_prefix(void) {
+    strview sv = stv_literal("123");
+    strview rem;
+    int     base = stv_parseIntBase(sv, &rem);
+    TEST_ASSERT_EQUAL_INT(10, base);
+    TEST_ASSERT_EQUAL_STRING("123", rem.data);
+    TEST_ASSERT_EQUAL_size_t(3, rem.len);
+}
+
+void test_stv_parseIntBase_single_zero(void) {
+    strview sv = stv_literal("0");
+    strview rem;
+    int     base = stv_parseIntBase(sv, &rem);
+    TEST_ASSERT_EQUAL_INT(10, base);
+    TEST_ASSERT_EQUAL_STRING("0", rem.data);
+    TEST_ASSERT_EQUAL_size_t(1, rem.len);
+}
+
+void test_stv_parseIntBase_0b(void) {
+    strview sv = stv_literal("0b101");
+    strview rem;
+    int     base = stv_parseIntBase(sv, &rem);
+    TEST_ASSERT_EQUAL_INT(2, base);
+    TEST_ASSERT_EQUAL_STRING("101", rem.data);
+    TEST_ASSERT_EQUAL_size_t(3, rem.len);
+}
+
+void test_stv_parseIntBase_0B(void) {
+    strview sv = stv_literal("0B101");
+    strview rem;
+    int     base = stv_parseIntBase(sv, &rem);
+    TEST_ASSERT_EQUAL_INT(2, base);
+    TEST_ASSERT_EQUAL_STRING("101", rem.data);
+}
+
+void test_stv_parseIntBase_0o(void) {
+    strview sv = stv_literal("0o77");
+    strview rem;
+    int     base = stv_parseIntBase(sv, &rem);
+    TEST_ASSERT_EQUAL_INT(8, base);
+    TEST_ASSERT_EQUAL_STRING("77", rem.data);
+}
+
+void test_stv_parseIntBase_0O(void) {
+    strview sv = stv_literal("0O77");
+    strview rem;
+    int     base = stv_parseIntBase(sv, &rem);
+    TEST_ASSERT_EQUAL_INT(8, base);
+    TEST_ASSERT_EQUAL_STRING("77", rem.data);
+}
+
+void test_stv_parseIntBase_0d(void) {
+    strview sv = stv_literal("0d99");
+    strview rem;
+    int     base = stv_parseIntBase(sv, &rem);
+    TEST_ASSERT_EQUAL_INT(10, base);
+    TEST_ASSERT_EQUAL_STRING("99", rem.data);
+}
+
+void test_stv_parseIntBase_0D(void) {
+    strview sv = stv_literal("0D99");
+    strview rem;
+    int     base = stv_parseIntBase(sv, &rem);
+    TEST_ASSERT_EQUAL_INT(10, base);
+    TEST_ASSERT_EQUAL_STRING("99", rem.data);
+}
+
+void test_stv_parseIntBase_0x(void) {
+    strview sv = stv_literal("0xFF");
+    strview rem;
+    int     base = stv_parseIntBase(sv, &rem);
+    TEST_ASSERT_EQUAL_INT(16, base);
+    TEST_ASSERT_EQUAL_STRING("FF", rem.data);
+}
+
+void test_stv_parseIntBase_0X(void) {
+    strview sv = stv_literal("0XFF");
+    strview rem;
+    int     base = stv_parseIntBase(sv, &rem);
+    TEST_ASSERT_EQUAL_INT(16, base);
+    TEST_ASSERT_EQUAL_STRING("FF", rem.data);
+}
+
+void test_stv_parseIntBase_0_but_no_known_prefix(void) {
+    strview sv = stv_literal("077");
+    strview rem;
+    int     base = stv_parseIntBase(sv, &rem);
+    TEST_ASSERT_EQUAL_INT(10, base);
+    TEST_ASSERT_EQUAL_STRING("077", rem.data);
+}
+
+void test_stv_parseIntBase_0_followed_by_invalid(void) {
+    strview sv = stv_literal("0?");
+    strview rem;
+    int     base = stv_parseIntBase(sv, &rem);
+    TEST_ASSERT_EQUAL_INT(10, base);
+    TEST_ASSERT_EQUAL_STRING("0?", rem.data);
+}
+
+/* ========================================================================== */
+/*  stv_parseInum (signed)                                                    */
+/* ========================================================================== */
+
+void test_stv_parseInum_decimal_positive(void) {
+    strview  sv = stv_literal("42");
+    strview  rem;
+    intmax_t val = stv_parseInum(sv, 10, &rem);
+    TEST_ASSERT_EQUAL_INT64(42, val);
+    TEST_ASSERT_TRUE(stv_empty(rem));
+}
+
+void test_stv_parseInum_decimal_negative(void) {
+    strview  sv = stv_literal("-42");
+    strview  rem;
+    intmax_t val = stv_parseInum(sv, 10, &rem);
+    TEST_ASSERT_EQUAL_INT64(-42, val);
+    TEST_ASSERT_TRUE(stv_empty(rem));
+}
+
+void test_stv_parseInum_plus_sign(void) {
+    strview  sv = stv_literal("+99");
+    strview  rem;
+    intmax_t val = stv_parseInum(sv, 10, &rem);
+    TEST_ASSERT_EQUAL_INT64(99, val);
+    TEST_ASSERT_TRUE(stv_empty(rem));
+}
+
+void test_stv_parseInum_whitespace_skip(void) {
+    strview  sv = stv_literal("   -123");
+    strview  rem;
+    intmax_t val = stv_parseInum(sv, 10, &rem);
+    TEST_ASSERT_EQUAL_INT64(-123, val);
+    TEST_ASSERT_TRUE(stv_empty(rem));
+}
+
+void test_stv_parseInum_auto_base_bin(void) {
+    strview  sv = stv_literal("0b1101");
+    strview  rem;
+    intmax_t val = stv_parseInum(sv, 0, &rem);
+    TEST_ASSERT_EQUAL_INT64(13, val);
+    TEST_ASSERT_TRUE(stv_empty(rem));
+}
+
+void test_stv_parseInum_auto_base_oct(void) {
+    strview  sv = stv_literal("0o77");
+    strview  rem;
+    intmax_t val = stv_parseInum(sv, 0, &rem);
+    TEST_ASSERT_EQUAL_INT64(63, val);
+    TEST_ASSERT_TRUE(stv_empty(rem));
+}
+
+void test_stv_parseInum_auto_base_hex(void) {
+    strview  sv = stv_literal("0xFF");
+    strview  rem;
+    intmax_t val = stv_parseInum(sv, 0, &rem);
+    TEST_ASSERT_EQUAL_INT64(255, val);
+    TEST_ASSERT_TRUE(stv_empty(rem));
+}
+
+void test_stv_parseInum_auto_base_dec_no_prefix(void) {
+    strview  sv = stv_literal("077");
+    strview  rem;
+    intmax_t val = stv_parseInum(sv, 0, &rem);
+    TEST_ASSERT_EQUAL_INT64(77, val);
+    TEST_ASSERT_TRUE(stv_empty(rem));
+}
+
+void test_stv_parseInum_explicit_base_16(void) {
+    strview  sv = stv_literal("0xFF");
+    strview  rem;
+    intmax_t val = stv_parseInum(sv, 16, &rem);
+    TEST_ASSERT_EQUAL_INT64(255, val);
+    TEST_ASSERT_TRUE(stv_empty(rem));
+}
+
+void test_stv_parseInum_trailing_chars(void) {
+    strview  sv = stv_literal("123abc");
+    strview  rem;
+    intmax_t val = stv_parseInum(sv, 10, &rem);
+    TEST_ASSERT_EQUAL_INT64(123, val);
+    TEST_ASSERT_EQUAL_STRING("abc", rem.data);
+    TEST_ASSERT_EQUAL_size_t(3, rem.len);
+}
+
+void test_stv_parseInum_empty_string(void) {
+    strview  rem;
+    intmax_t val = stv_parseInum(stv_nullstv, 10, &rem);
+    TEST_ASSERT_EQUAL_INT64(0, val);
+    TEST_ASSERT_TRUE(stv_empty(rem));
+}
+
+void test_stv_parseInum_only_whitespace(void) {
+    strview  sv = stv_literal("  \t ");
+    strview  rem;
+    intmax_t val = stv_parseInum(sv, 10, &rem);
+    TEST_ASSERT_EQUAL_INT64(0, val);
+    TEST_ASSERT_EQUAL_STRING("", rem.data);
+    TEST_ASSERT_EQUAL_size_t(0, rem.len);
+}
+
+void test_stv_parseInum_only_sign(void) {
+    strview  sv = stv_literal("-");
+    strview  rem;
+    intmax_t val = stv_parseInum(sv, 10, &rem);
+    TEST_ASSERT_EQUAL_INT64(0, val);
+    TEST_ASSERT_EQUAL_STRING("", rem.data);
+    TEST_ASSERT_EQUAL_size_t(0, rem.len);
+}
+
+void test_stv_parseInum_invalid_base(void) {
+    strview  sv = stv_literal("123");
+    strview  rem;
+    intmax_t val = stv_parseInum(sv, 1, &rem);
+    TEST_ASSERT_EQUAL_INT64(0, val);
+    TEST_ASSERT_EQUAL_STRING("123", rem.data);
+}
+
+void test_stv_parseInum_overflow_positive(void) {
+    strview  sv = stv_literal("9223372036854775808");
+    strview  rem;
+    intmax_t val = stv_parseInum(sv, 10, &rem);
+    TEST_ASSERT_EQUAL_INT64(INTMAX_MAX, val);
+    TEST_ASSERT_TRUE(stv_empty(rem));
+}
+
+void test_stv_parseInum_overflow_negative(void) {
+    strview  sv = stv_literal("-9223372036854775809");
+    strview  rem;
+    intmax_t val = stv_parseInum(sv, 10, &rem);
+    TEST_ASSERT_EQUAL_INT64(INTMAX_MIN, val);
+    TEST_ASSERT_TRUE(stv_empty(rem));
+}
+
+void test_stv_parseInum_overflow_with_trailing(void) {
+    strview  sv = stv_literal("99999999999999999999abc");
+    strview  rem;
+    intmax_t val = stv_parseInum(sv, 10, &rem);
+    TEST_ASSERT_EQUAL_INT64(INTMAX_MAX, val);
+    TEST_ASSERT_EQUAL_STRING("abc", rem.data);
+}
+
+/* ========================================================================== */
+/*  stv_parseUnum (unsigned)                                                  */
+/* ========================================================================== */
+
+void test_stv_parseUnum_normal(void) {
+    strview   sv = stv_literal("12345");
+    strview   rem;
+    uintmax_t val = stv_parseUnum(sv, 10, &rem);
+    TEST_ASSERT_EQUAL_UINT64(12345, val);
+    TEST_ASSERT_TRUE(stv_empty(rem));
+}
+
+void test_stv_parseUnum_negative_wraps(void) {
+    strview   sv = stv_literal("-40");
+    strview   rem;
+    uintmax_t val = stv_parseUnum(sv, 10, &rem);
+    /* -(uintmax_t)40 is UINTMAX_MAX - 39 */
+    TEST_ASSERT_EQUAL_UINT64(UINTMAX_MAX - 39, val);
+    TEST_ASSERT_TRUE(stv_empty(rem));
+}
+
+void test_stv_parseUnum_hex(void) {
+    strview   sv = stv_literal("0xDEAD");
+    strview   rem;
+    uintmax_t val = stv_parseUnum(sv, 0, &rem);
+    TEST_ASSERT_EQUAL_UINT64(0xDEAD, val);
+    TEST_ASSERT_TRUE(stv_empty(rem));
+}
+
+void test_stv_parseUnum_overflow(void) {
+    /* UINT64_MAX + 1 would overflow */
+    strview   sv = stv_literal("18446744073709551616");
+    strview   rem;
+    uintmax_t val = stv_parseUnum(sv, 10, &rem);
+    TEST_ASSERT_EQUAL_UINT64(UINTMAX_MAX, val);
+    TEST_ASSERT_TRUE(stv_empty(rem));
+}
+
+void test_stv_parseUnum_overflow_negative(void) {
+    strview   sv = stv_literal("-99999999999999999999");
+    strview   rem;
+    uintmax_t val = stv_parseUnum(sv, 10, &rem);
+    TEST_ASSERT_EQUAL_UINT64(UINTMAX_MAX, val);
+    TEST_ASSERT_TRUE(stv_empty(rem));
+}
+
+void test_stv_parseUnum_empty(void) {
+    strview   rem;
+    uintmax_t val = stv_parseUnum(stv_nullstv, 10, &rem);
+    TEST_ASSERT_EQUAL_UINT64(0, val);
+    TEST_ASSERT_TRUE(stv_empty(rem));
 }
 
 /* ========================================================================== */
@@ -1521,6 +1911,11 @@ int main(void) {
     RUN_TEST(test_stv_at_out_of_bounds);
     RUN_TEST(test_stv_at_empty);
 
+    /* stv_forEach */
+    RUN_TEST(test_stv_forEach_empty);
+    RUN_TEST(test_stv_forEach_normal);
+    RUN_TEST(test_stv_forEach_single_char);
+
     /* swap */
     RUN_TEST(test_stv_swap);
     RUN_TEST(test_stv_swap_null_pointers);
@@ -1532,7 +1927,56 @@ int main(void) {
     RUN_TEST(test_stv_opt_cstr_upper);
     RUN_TEST(test_stv_opt_cstr_lower);
     RUN_TEST(test_stv_opt_cstr_reverse_upper);
+    RUN_TEST(test_stv_opt_cstr_swapcase);
     RUN_TEST(test_stv_cstr_empty_view);
+
+    /* stv_ch2digit */
+    RUN_TEST(test_stv_ch2digit_digits);
+    RUN_TEST(test_stv_ch2digit_uppercase);
+    RUN_TEST(test_stv_ch2digit_lowercase);
+    RUN_TEST(test_stv_ch2digit_invalid);
+
+    /* stv_parseIntBase */
+    RUN_TEST(test_stv_parseIntBase_empty);
+    RUN_TEST(test_stv_parseIntBase_no_prefix);
+    RUN_TEST(test_stv_parseIntBase_single_zero);
+    RUN_TEST(test_stv_parseIntBase_0b);
+    RUN_TEST(test_stv_parseIntBase_0B);
+    RUN_TEST(test_stv_parseIntBase_0o);
+    RUN_TEST(test_stv_parseIntBase_0O);
+    RUN_TEST(test_stv_parseIntBase_0d);
+    RUN_TEST(test_stv_parseIntBase_0D);
+    RUN_TEST(test_stv_parseIntBase_0x);
+    RUN_TEST(test_stv_parseIntBase_0X);
+    RUN_TEST(test_stv_parseIntBase_0_but_no_known_prefix);
+    RUN_TEST(test_stv_parseIntBase_0_followed_by_invalid);
+
+    /* stv_parseInum */
+    RUN_TEST(test_stv_parseInum_decimal_positive);
+    RUN_TEST(test_stv_parseInum_decimal_negative);
+    RUN_TEST(test_stv_parseInum_plus_sign);
+    RUN_TEST(test_stv_parseInum_whitespace_skip);
+    RUN_TEST(test_stv_parseInum_auto_base_bin);
+    RUN_TEST(test_stv_parseInum_auto_base_oct);
+    RUN_TEST(test_stv_parseInum_auto_base_hex);
+    RUN_TEST(test_stv_parseInum_auto_base_dec_no_prefix);
+    RUN_TEST(test_stv_parseInum_explicit_base_16);
+    RUN_TEST(test_stv_parseInum_trailing_chars);
+    RUN_TEST(test_stv_parseInum_empty_string);
+    RUN_TEST(test_stv_parseInum_only_whitespace);
+    RUN_TEST(test_stv_parseInum_only_sign);
+    RUN_TEST(test_stv_parseInum_invalid_base);
+    RUN_TEST(test_stv_parseInum_overflow_positive);
+    RUN_TEST(test_stv_parseInum_overflow_negative);
+    RUN_TEST(test_stv_parseInum_overflow_with_trailing);
+
+    /* stv_parseUnum */
+    RUN_TEST(test_stv_parseUnum_normal);
+    RUN_TEST(test_stv_parseUnum_negative_wraps);
+    RUN_TEST(test_stv_parseUnum_hex);
+    RUN_TEST(test_stv_parseUnum_overflow);
+    RUN_TEST(test_stv_parseUnum_overflow_negative);
+    RUN_TEST(test_stv_parseUnum_empty);
 
     /* printf macros */
     RUN_TEST(test_stv_printf_macro);

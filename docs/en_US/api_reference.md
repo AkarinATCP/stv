@@ -11,6 +11,7 @@
 - [Types](#types)
   - [strview](#strview)
   - [stv_charClassFn](#stv_charclassfn)
+  - [stv_forEachFn](#stv_foreachfn)
   - [stv_cstrOptions](#stv_cstroptions)
 - [Creation](#creation)
   - [stv_new](#stv_new)
@@ -93,12 +94,18 @@
   - [stv_front](#stv_front)
   - [stv_back](#stv_back)
   - [stv_at](#stv_at)
+  - [stv_forEach](#stv_foreach)
   - [stv_swap](#stv_swap)
   - [stv_hash](#stv_hash)
   - [stv_hash_FNV1a](#stv_hash_fnv1a)
   - [stv_cstr](#stv_cstr)
   - [stv_opt_cstr](#stv_opt_cstr)
   - [stv_PFARG / stv_PFFMT](#stv_pfarg--stv_pffmt)
+- [Number Parsing](#number-parsing)
+  - [stv_ch2digit](#stv_ch2digit)
+  - [stv_parseIntBase](#stv_parseintbase)
+  - [stv_parseInum](#stv_parseinum)
+  - [stv_parseUnum](#stv_parseunum)
 - [Macros and Constants](#macros-and-constants)
   - [stv_begin](#stv_begin)
   - [stv_end](#stv_end)
@@ -129,6 +136,15 @@ typedef int (*stv_charClassFn)(int);
 ```
 Function pointer type for character classification. Should behave like the standard `is*` functions (e.g., `isdigit`, `isspace`) – returns non-zero if the character belongs to the class, zero otherwise.
 
+### stv_forEachFn
+```c
+typedef void (*stv_forEachFn)(char ch, size_t idx, strview ctx);
+```
+Callback function pointer type for [`stv_forEach`](#stv_foreach).
+- `ch` : Current character.
+- `idx` : Zero-based index of the character.
+- `ctx` : The original `strview` passed to the iteration.
+
 ### stv_cstrOptions
 ```c
 typedef enum {
@@ -146,7 +162,7 @@ Bitwise options for `stv_opt_cstr` to control output transformations.
 - `stv_ToLower` (2): Convert characters to lowercase using an ASCII mask.
 - `stv_Reverse` (4): Reverse the character order.
 
-Multiple options can be combined with `|`. If both `stv_ToUpper` and `stv_ToLower` are set, the result is lowercase.
+Multiple options can be combined with `|`. If both `stv_ToUpper` and `stv_ToLower` are set, the result is swapCase (Abc -> aBC).
 
 ---
 
@@ -950,6 +966,19 @@ Access the character at the specified index.
 **Return:**
 - Character at `idx`, or `'\0'` if out of bounds or view empty.
 
+### stv_forEach
+```c
+void stv_forEach(strview stv, stv_forEachFn callback);
+```
+Iterate over each character of the view. The callback receives the character, its index, and the original view as context. If the view is empty, the callback is never called.
+
+**Parameters:**
+- `stv` : View to iterate.
+- `callback` : Callback of type [`stv_forEachFn`](#stv_foreachfn).
+
+**Return:**
+- None.
+
 ### stv_swap
 ```c
 void stv_swap(strview* stv_left, strview* stv_right);
@@ -1018,7 +1047,9 @@ Copy the view content with optional transformations (case change, reversal).
 
 ### stv_PFARG / stv_PFFMT
 ```c
-#define stv_PFARG(stv) (int)(...), (...)
+#define stv_PFARG(stv)                                                         \
+    (int)(stv_empty(stv) ? 0 : (stv).len > INT_MAX ? INT_MAX : (stv).len),     \
+    (stv_empty(stv) ? "" : (stv).data)
 #define stv_PFFMT       "%.*s"
 ```
 Helper macros for `printf`‑style formatting of a string view.
@@ -1029,6 +1060,75 @@ printf("data: " stv_PFFMT "\n", stv_PFARG(myview));
 ```
 - Length is capped at `INT_MAX` if necessary.
 - For empty views, an empty string and length 0 are passed.
+
+---
+
+## Number Parsing
+
+### stv_ch2digit
+```c
+int stv_ch2digit(char ch);
+```
+Convert a character to its numeric digit value (0‑35).
+
+**Parameters:**
+- `ch` : Input character.
+
+**Return:**
+- Digit value for `'0'`‑`'9'` (0‑9), `'A'`‑`'Z'` (10‑35), or `'a'`‑`'z'` (10‑35).  
+  Returns `-1` if the character is not a valid digit.
+
+### stv_parseIntBase
+```c
+int stv_parseIntBase(strview stv, strview* remaining);
+```
+Detect the numeric base from a view's prefix. Supports `0b`/`0B` (binary), `0o`/`0O` (octal), `0d`/`0D` (decimal), and `0x`/`0X` (hex).  
+A leading `'0'` without a recognised prefix is treated as decimal and the `'0'` remains as part of the number.  
+If the view is empty, returns `0` and sets `*remaining` to the empty view.
+
+**Parameters:**
+- `stv` : View to examine.
+- `remaining` : Optional output pointer to receive the part after the prefix. If `NULL`, the remainder is discarded.
+
+**Return:**
+- The detected base (2, 8, 10, or 16). Returns `0` if the view is empty.
+
+**Details:**
+- Unlike the C standard library, a lone `'0'` does **not** imply octal. Only explicit `0o`/`0O` triggers octal.  
+- When a prefix is recognised, the returned `remaining` starts after the two‑character prefix; otherwise it covers the original view.
+
+### stv_parseInum
+```c
+intmax_t stv_parseInum(strview stv, int base, strview* remaining);
+```
+Parse a signed integer from a string view.  
+Leading whitespace (as defined by [`stv_whitespace`](#stv_whitespace)) is skipped, then an optional `'+'` or `'-'` sign is consumed. Digits in the given base are parsed until a non‑digit or the end of the view.  
+If `base` is `0`, it is auto‑detected using [`stv_parseIntBase`](#stv_parseintbase). The base must be in the range 2‑36; otherwise the function returns `0` without consuming additional characters beyond whitespace and sign.
+
+**Parameters:**
+- `stv` : View to parse.
+- `base` : Numeric base (2‑36), or `0` for auto‑detection.
+- `remaining` : Optional output pointer that receives the first unprocessed character. If `NULL`, the remainder is discarded.
+
+**Return:**
+- The parsed value as `intmax_t`. Returns `0` if no digits were found or the base is invalid.  
+  On overflow, returns `INTMAX_MAX` for positive or `INTMAX_MIN` for negative, and `remaining` points past the digits.
+
+### stv_parseUnum
+```c
+uintmax_t stv_parseUnum(strview stv, int base, strview* remaining);
+```
+Parse an unsigned integer from a string view.  
+Works identically to [`stv_parseInum`](#stv_parseinum) except that the result is `uintmax_t`. Negative numbers are converted by interpreting the absolute value in the unsigned domain (e.g., `"-40"` yields `UINTMAX_MAX - 39`).
+
+**Parameters:**
+- `stv` : View to parse.
+- `base` : Numeric base (2‑36), or `0` for auto‑detection.
+- `remaining` : Optional output pointer for the remainder.
+
+**Return:**
+- The parsed value as `uintmax_t`. Returns `0` if no digits or invalid base.  
+  On overflow, returns `UINTMAX_MAX`.
 
 ---
 
@@ -1057,4 +1157,3 @@ Sentinel value returned by search/index functions to indicate “not found”.
 #define stv_whitespace stv_literal(" \r\n\t\v\f")
 ```
 Predefined view containing common whitespace characters (space, CR, LF, tab, vertical tab, form feed). Useful for trimming and splitting.
-```

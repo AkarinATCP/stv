@@ -68,6 +68,7 @@ A quick overview of the main function groups:
 | Comparison         | `stv_compare`, `stv_equal`, `stv_same`, `stv_startsWith`, `stv_endsWith`, `stv_contains`, `stv_empty` |
 | Count / Predicates | `stv_count`, `stv_every`, `stv_some`                                                                  |
 | Utilities          | `stv_front`, `stv_back`, `stv_at`, `stv_swap`, `stv_cstr`, `stv_hash`, `stv_PFARG`, `stv_PFFMT`       |
+| Number Parsing     | `stv_ch2digit`, `stv_parseIntBase`, `stv_parseInum`, `stv_parseUnum`                                  |
 
 > [!NOTE]
 > Complete parameter descriptions, return values, and examples is available in [API Reference](docs/en_US/api_reference.md).

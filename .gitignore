@@ -10,3 +10,6 @@ build/
 
 # Cache files
 .cache/
+
+# clangd
+.clangd
