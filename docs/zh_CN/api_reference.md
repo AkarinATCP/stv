@@ -98,6 +98,11 @@
   - [stv_cstr](#stv_cstr)
   - [stv_opt_cstr](#stv_opt_cstr)
   - [stv_PFARG / stv_PFFMT](#stv_pfarg--stv_pffmt)
+- [数值解析](#数值解析)
+  - [stv_ch2digit](#stv_ch2digit)
+  - [stv_parseIntBase](#stv_parseintbase)
+  - [stv_parseInum](#stv_parseinum)
+  - [stv_parseUnum](#stv_parseunum)
 - [宏与常量](#宏与常量)
   - [stv_begin](#stv_begin)
   - [stv_end](#stv_end)
@@ -145,7 +150,7 @@ typedef enum {
 - `stv_ToLower` (2)：通过 ASCII 掩码转换为小写。
 - `stv_Reverse` (4)：反转字符顺序。
 
-多个选项可通过 `|` 组合。若同时设置 `stv_ToUpper` 与 `stv_ToLower`，结果为小写。
+多个选项可通过 `|` 组合。若同时设置 `stv_ToUpper` 与 `stv_ToLower`，交换大小写（Abc -> aBC）。
 
 ---
 
@@ -1029,6 +1034,75 @@ printf("data: " stv_PFFMT "\n", stv_PFARG(myview));
 ```
 - 若视图长度超过 `INT_MAX`，长度将被截断。
 - 对于空视图，传入空字符串和长度 0。
+
+---
+
+## 数值解析
+
+### stv_ch2digit
+```c
+int stv_ch2digit(char ch);
+```
+将字符转换为其数字值 (0‑35)。
+
+**参数：**
+- `ch` : 输入字符。
+
+**返回值：**
+- 对于 `'0'`‑`'9'` 返回 0‑9，对于 `'A'`‑`'Z'` 或 `'a'`‑`'z'` 返回 10‑35。  
+  若字符不是有效数字字符，则返回 `-1`。
+
+### stv_parseIntBase
+```c
+int stv_parseIntBase(strview stv, strview* remaining);
+```
+根据视图前缀检测数字基数。支持 `0b`/`0B`（二进制）、`0o`/`0O`（八进制）、`0d`/`0D`（十进制）、`0x`/`0X`（十六进制）。  
+单独的前导 `'0'` 不视为八进制，而是作为十进制数字的一部分保留。  
+若视图为空，则返回 `0` 并将 `*remaining` 设为空视图。
+
+**参数：**
+- `stv` : 要检查的视图。
+- `remaining` : 可选输出指针，用于接收前缀之后的部分。若为 `NULL`，则丢弃。
+
+**返回值：**
+- 检测到的基数（2、8、10 或 16）。若视图为空则返回 `0`。
+
+**详情：**
+- 与 C 标准库不同，单独的 `'0'` **不会** 被解释为八进制前缀，只有显式的 `0o`/`0O` 才会触发八进制。  
+- 识别到前缀时，返回的 `remaining` 从前缀后的第一个字符开始；否则 `remaining` 覆盖原始视图。
+
+### stv_parseInum
+```c
+intmax_t stv_parseInum(strview stv, int base, strview* remaining);
+```
+从字符串视图解析有符号整数。  
+跳过前导空白字符（定义见 [`stv_whitespace`](#stv_whitespace)），然后消耗可选的 `'+'` 或 `'-'` 符号。按指定基数解析数字，直到遇到非数字字符或视图结束。  
+若 `base` 为 `0`，则通过 [`stv_parseIntBase`](#stv_parseintbase) 自动检测基数。基数必须在 2‑36 范围内，否则函数返回 `0` 且除了空白和符号外不消耗更多字符。
+
+**参数：**
+- `stv` : 要解析的视图。
+- `base` : 基数 (2‑36)，或传入 `0` 自动检测。
+- `remaining` : 可选输出指针，指向第一个未处理的字符。若为 `NULL`，则丢弃剩余部分。
+
+**返回值：**
+- 解析出的 `intmax_t` 值。若未找到数字或基数无效则返回 `0`。  
+  溢出时，正数返回 `INTMAX_MAX`，负数返回 `INTMAX_MIN`，且 `remaining` 会跳过所有已解析的数字。
+
+### stv_parseUnum
+```c
+uintmax_t stv_parseUnum(strview stv, int base, strview* remaining);
+```
+从字符串视图解析无符号整数。  
+与 [`stv_parseInum`](#stv_parseinum) 类似，但返回 `uintmax_t`。负数通过将绝对值在无符号域中取模得到（例如 `"-40"` 解析为 `UINTMAX_MAX - 39`）。
+
+**参数：**
+- `stv` : 要解析的视图。
+- `base` : 基数 (2‑36)，或 `0` 自动检测。
+- `remaining` : 可选输出指针，指向剩余部分。
+
+**返回值：**
+- 解析出的 `uintmax_t` 值。无数字或无效基数返回 `0`。  
+  溢出时返回 `UINTMAX_MAX`。
 
 ---
 

@@ -98,7 +98,7 @@ typedef int (*stv_charClassFn)(int);
  * - stv_ToLower (0x02): Convert characters to lowercase (using ASCII mask).
  * - stv_Reverse (0x04): Reverse the order of characters in the output.
  *
- * @note When both stv_ToUpper and stv_ToLower are set, the result is lowercase.
+ * @note When both stv_ToUpper and stv_ToLower are set, the result is swapCase (Abc -> aBC).
  */
 typedef enum {
     stv_Default = 0, // 0b00000000
@@ -799,6 +799,57 @@ LIB_STV_FN char* stv_cstr(strview stv, char* mem, size_t size);
 LIB_STV_FN char* stv_opt_cstr(strview stv, char* mem, size_t size, stv_cstrOptions opts);
 
 /**
+ * @brief Convert a character to its numeric digit value (0-35)
+ *
+ * @param ch Input character
+ * @return Digit value 0-35 for '0'-'9', 'A'-'Z', 'a'-'z'; -1 if invalid
+ */
+LIB_STV_FN int stv_ch2digit(char ch);
+
+/**
+ * @brief Detect numeric base from the prefix of a string view
+ *
+ * Supports 0b/0B for binary, 0o/0O for octal, 0d/0D for decimal, 0x/0X for hexadecimal.
+ * A lone leading '0' without a recognised prefix is treated as decimal and is consumed as part of the number.
+ * If no prefix is found, the base defaults to 10 and the view is unchanged.
+ *
+ * @param stv Input view to examine
+ * @param remaining Optional output pointer to receive the portion after the prefix (if any).
+ *                  If NULL, the remainder is discarded.
+ * @return The detected base (2, 8, 10, or 16). Returns 0 if the view is empty.
+ */
+LIB_STV_FN int stv_parseIntBase(strview stv, strview* remaining);
+
+/**
+ * @brief Parse a signed integer from a string view
+ *
+ * Skips leading whitespace, handles an optional '+'/'-' sign, and then parses digits
+ * in the specified base. If base is 0, it is auto-detected via stv_parseIntBase().
+ * Overflows are clamped to INTMAX_MAX / INTMAX_MIN and the remaining view is updated.
+ *
+ * @param stv Input view
+ * @param base Numeric base (2-36), or 0 for auto-detection
+ * @param remaining Optional output pointer to receive the portion after the parsed number.
+ *                  If NULL, the remainder is discarded.
+ * @return The parsed value; 0 if no digits found or base invalid; clamped on overflow.
+ */
+LIB_STV_FN intmax_t stv_parseInum(strview stv, int base, strview* remaining);
+
+/**
+ * @brief Parse an unsigned integer from a string view
+ *
+ * Similar to stv_parseInum() but returns uintmax_t. Negative values are converted
+ * via modulo arithmetic (e.g., "-40" yields UINTMAX_MAX - 39). Overflows are clamped
+ * to UINTMAX_MAX.
+ *
+ * @param stv Input view
+ * @param base Numeric base (2-36), or 0 for auto-detection
+ * @param remaining Optional output pointer for the remainder
+ * @return The parsed value; 0 if no digits or invalid base; clamped on overflow.
+ */
+LIB_STV_FN uintmax_t stv_parseUnum(strview stv, int base, strview* remaining);
+
+/**
  * @brief Convenience macro: construct a strview from a given data pointer and length
  *
  * @param data_v Pointer to the data
@@ -899,6 +950,9 @@ LIB_STV_FN strview stv_removeSuffix(strview stv, strview suffix) {
 
 LIB_STV_FN strview stv_split(strview stv, strview sep, strview* remaining) {
     if (stv_empty(stv)) {
+        if (remaining) {
+            *remaining = stv;
+        }
         return stv;
     }
 
@@ -915,6 +969,9 @@ LIB_STV_FN strview stv_split(strview stv, strview sep, strview* remaining) {
 
 LIB_STV_FN strview stv_splitLines(strview stv, strview* remaining) {
     if (stv_empty(stv)) {
+        if (remaining) {
+            *remaining = stv;
+        }
         return stv;
     }
 
@@ -938,6 +995,9 @@ LIB_STV_FN strview stv_splitLines(strview stv, strview* remaining) {
 
 LIB_STV_FN strview stv_splitWords(strview stv, strview* remaining) {
     if (stv_empty(stv)) {
+        if (remaining) {
+            *remaining = stv;
+        }
         return stv;
     }
 
@@ -1556,9 +1616,9 @@ LIB_STV_FN char* stv_cstr(strview stv, char* mem, size_t size) {
 }
 
 LIB_STV_FN char* stv_opt_cstr(strview stv, char* mem, size_t size, stv_cstrOptions opts) {
-    const char upper_mask = (opts & stv_ToUpper) ? (~32) : (-1);
-    const char lower_mask = (opts & stv_ToLower) ? (32) : (0);
-    const bool reverse    = (opts & stv_Reverse);
+    const bool UPPER   = (opts & stv_ToUpper);
+    const bool LOWER   = (opts & stv_ToLower);
+    const bool REVERSE = (opts & stv_Reverse);
 
     if (mem == nullptr || size <= stv.len) {
         return nullptr;
@@ -1566,12 +1626,192 @@ LIB_STV_FN char* stv_opt_cstr(strview stv, char* mem, size_t size, stv_cstrOptio
     const size_t endidx = stv_empty(stv) ? 0 : stv.len;
     if (endidx > 0) {
         for (size_t idx = 0, ridx = endidx - 1; idx < endidx; idx++, ridx--) {
-            const char ch = stv.data[(reverse ? ridx : idx)];
-            mem[idx]      = ch & upper_mask | lower_mask;
+            char ch = stv.data[(REVERSE ? ridx : idx)];
+            if (UPPER && ch >= 'a' && ch <= 'z') {
+                ch = ch & ~32;
+            } else if (LOWER && ch >= 'A' && ch <= 'Z') {
+                ch = ch | 32;
+            }
+            mem[idx] = ch;
         }
     }
     mem[endidx] = '\0';
     return mem;
+}
+
+LIB_STV_FN intmax_t stv_parseInum(strview stv, int base, strview* remaining) {
+    stv = stv_trimStart(stv, stv_whitespace);
+    if (stv_empty(stv)) {
+        if (remaining) {
+            *remaining = stv;
+        }
+        return 0;
+    }
+
+    const char neg_ch   = *(stv.data);
+    const bool negative = (neg_ch == '-');
+    if (neg_ch == '-' || neg_ch == '+') {
+        stv = stv_makestv(stv.data + 1, stv.len - 1);
+    }
+
+    bool auto_base = (base == 0);
+    base           = auto_base ? stv_parseIntBase(stv, &stv) : base;
+    if (base < 2 || base > 36) {
+        if (remaining) {
+            *remaining = stv;
+        }
+        return 0;
+    }
+
+    if (!auto_base) {
+        const char* up = (base == 2) ? "0B" : (base == 8) ? "0O" : (base == 10) ? "0D" : (base == 16) ? "0X" : nullptr;
+        const char* lw = (base == 2) ? "0b" : (base == 8) ? "0o" : (base == 10) ? "0d" : (base == 16) ? "0x" : nullptr;
+        if (up) {
+            if (stv_startsWith(stv, stv_makestv(up, 2)) || stv_startsWith(stv, stv_makestv(lw, 2))) {
+                stv = stv_makestv(stv.data + 2, stv.len - 2);
+            }
+        }
+    }
+
+    const char*     pos      = stv.data;
+    const char*     end_pos  = stv.data + stv.len;
+    const uintmax_t limit    = negative ? (uintmax_t)INTMAX_MAX + 1 : (uintmax_t)INTMAX_MAX;
+    uintmax_t       acc      = 0;
+    bool            overflow = false;
+
+    while (pos < end_pos) {
+        int d = stv_ch2digit(*pos);
+        if (d < 0 || d >= base) {
+            break;
+        }
+
+        if (!overflow) {
+            if (acc > limit / base || (acc == limit / base && d > (int)(limit % base))) {
+                overflow = true;
+            } else {
+                acc = acc * base + d;
+            }
+        }
+        pos++;
+    }
+
+    if (remaining) {
+        *remaining = stv_makestv(pos, end_pos - pos);
+    }
+
+    if (overflow) {
+        return negative ? INTMAX_MIN : INTMAX_MAX;
+    }
+
+    return negative ? -(intmax_t)acc : (intmax_t)acc;
+}
+
+LIB_STV_FN uintmax_t stv_parseUnum(strview stv, int base, strview* remaining) {
+    stv = stv_trimStart(stv, stv_whitespace);
+    if (stv_empty(stv)) {
+        if (remaining) {
+            *remaining = stv;
+        }
+        return 0;
+    }
+
+    const char neg_ch   = *(stv.data);
+    const bool negative = (neg_ch == '-');
+    if (neg_ch == '-' || neg_ch == '+') {
+        stv = stv_makestv(stv.data + 1, stv.len - 1);
+    }
+
+    bool auto_base = (base == 0);
+    base           = auto_base ? stv_parseIntBase(stv, &stv) : base;
+    if (base < 2 || base > 36) {
+        if (remaining) {
+            *remaining = stv;
+        }
+        return 0;
+    }
+
+    if (!auto_base) {
+        const char* up = (base == 2) ? "0B" : (base == 8) ? "0O" : (base == 10) ? "0D" : (base == 16) ? "0X" : nullptr;
+        const char* lw = (base == 2) ? "0b" : (base == 8) ? "0o" : (base == 10) ? "0d" : (base == 16) ? "0x" : nullptr;
+        if (up) {
+            if (stv_startsWith(stv, stv_makestv(up, 2)) || stv_startsWith(stv, stv_makestv(lw, 2))) {
+                stv = stv_makestv(stv.data + 2, stv.len - 2);
+            }
+        }
+    }
+
+    const char*     pos      = stv.data;
+    const char*     end_pos  = stv.data + stv.len;
+    const uintmax_t limit    = UINTMAX_MAX;
+    uintmax_t       acc      = 0;
+    bool            overflow = false;
+
+    while (pos < end_pos) {
+        int d = stv_ch2digit(*pos);
+        if (d < 0 || d >= base) {
+            break;
+        }
+
+        if (!overflow) {
+            if (acc > limit / base || (acc == limit / base && d > (int)(limit % base))) {
+                overflow = true;
+            } else {
+                acc = acc * base + d;
+            }
+        }
+        pos++;
+    }
+
+    if (remaining) {
+        *remaining = stv_makestv(pos, end_pos - pos);
+    }
+
+    if (overflow) {
+        return UINTMAX_MAX;
+    }
+
+    return negative ? -(uintmax_t)acc : acc;
+}
+
+LIB_STV_FN int stv_ch2digit(char ch) {
+    return (ch >= '0' && ch <= '9') ? (ch - '0')
+         : (ch >= 'A' && ch <= 'Z') ? (ch - 'A' + 10)
+         : (ch >= 'a' && ch <= 'z') ? (ch - 'a' + 10)
+                                    : -1;
+}
+
+LIB_STV_FN int stv_parseIntBase(strview stv, strview* remaining) {
+    if (stv_empty(stv)) {
+        if (remaining) {
+            *remaining = stv;
+        }
+        return 0;
+    }
+
+    int        base      = 10;
+    size_t     num_start = 2;
+    const char zero_ch   = stv.data[0];
+    if (zero_ch == '0' && stv.len >= 2) {
+        const char base_ch = (stv.data[1] | 32);
+        if (base_ch == 'b') {
+            base = 2;
+        } else if (base_ch == 'o') {
+            base = 8;
+        } else if (base_ch == 'd') {
+            base = 10;
+        } else if (base_ch == 'x') {
+            base = 16;
+        } else {
+            num_start = stv_begin;
+        }
+    } else {
+        num_start = stv_begin;
+    }
+
+    if (remaining) {
+        *remaining = stv_slice(stv, num_start, stv_end);
+    }
+    return base;
 }
 
 #endif // !LIB_STV_IMPL

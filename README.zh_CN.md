@@ -67,6 +67,7 @@ int main(int argc, char* argv[]) {
 | 比较        | `stv_compare`, `stv_equal`, `stv_same`, `stv_startsWith`, `stv_endsWith`, `stv_contains`, `stv_empty` |
 | 计数 / 谓词 | `stv_count`, `stv_every`, `stv_some`                                                                  |
 | 工具函数    | `stv_front`, `stv_back`, `stv_at`, `stv_swap`, `stv_cstr`, `stv_hash`, `stv_PFARG`, `stv_PFFMT`       |
+| 数值解析    | `stv_ch2digit`, `stv_parseIntBase`, `stv_parseInum`, `stv_parseUnum`                                  |
 
 > [!NOTE]
 > 完整的参数说明、返回值及示例，请访问 [API Reference](docs/zh_CN/api_reference.md) 。
