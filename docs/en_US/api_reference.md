@@ -99,9 +99,10 @@
   - [stv_swap](#stv_swap)
   - [stv_hash](#stv_hash)
   - [stv_hash_FNV1a](#stv_hash_fnv1a)
+- [C String](#c-string)
   - [stv_cstr](#stv_cstr)
   - [stv_opt_cstr](#stv_opt_cstr)
-  - [stv_PFARG / stv_PFFMT](#stv_pfarg--stv_pffmt)
+  - [stv_opt_join](#stv_opt_join)
 - [Number Parsing](#number-parsing)
   - [stv_ch2digit](#stv_ch2digit)
   - [stv_parseIntBase](#stv_parseintbase)
@@ -112,6 +113,8 @@
   - [stv_end](#stv_end)
   - [stv_npos](#stv_npos)
   - [stv_whitespace](#stv_whitespace)
+  - [stv_LIST](#stv_list)
+  - [stv_PFARG / stv_PFFMT](#stv_pfarg--stv_pffmt)
 
 ---
 
@@ -1032,6 +1035,10 @@ Direct FNV‑1a hash implementation. Selects 16/32/64‑bit parameters based on 
 **Return:**
 - Hash value; `0` if view empty or unsupported platform width.
 
+---
+
+## C String
+
 ### stv_cstr
 ```c
 char* stv_cstr(strview stv, char* mem, size_t size);
@@ -1056,26 +1063,29 @@ Copy the view content with optional transformations (case change, reversal).
 - `stv` : Source view.
 - `mem` : Destination buffer.
 - `size` : Buffer size.
-- `opts` : Bitwise combination of `stv_cstrOptions`.
+- `opts` : Bitwise combination of [`stv_cstrOptions`](#stv_cstroptions).
 
 **Return:**
 - `mem` if buffer is large enough; `NULL` otherwise.
 
-### stv_PFARG / stv_PFFMT
+### stv_opt_join
 ```c
-#define stv_PFARG(stv)                                                         \
-    (int)(stv_empty(stv) ? 0 : (stv).len > INT_MAX ? INT_MAX : (stv).len),     \
-    (stv_empty(stv) ? "" : (stv).data)
-#define stv_PFFMT       "%.*s"
+char* stv_opt_join(strview stv_arr[], size_t arr_len, char* mem, size_t size, strview sep, stv_cstrOptions opts);
 ```
-Helper macros for `printf`‑style formatting of a string view.
+Join an array of string views into a single C string, with a separator between each pair of elements.  
+Each element optionally be transformed using `opts`.
+If the array is empty and the buffer has at least one byte, an empty string is written.
 
-**Usage:**
-```c
-printf("data: " stv_PFFMT "\n", stv_PFARG(myview));
-```
-- Length is capped at `INT_MAX` if necessary.
-- For empty views, an empty string and length 0 are passed.
+**Parameters:**
+- `stv_arr` : Array of `strview` to join. May be `NULL` only if `arr_len` is 0.
+- `arr_len` : Number of elements in the array.
+- `mem` : Destination buffer.
+- `size` : Size of the destination buffer in bytes.
+- `sep` : Separator inserted between elements. May be empty.
+- `opts` : Bitwise combination of [`stv_cstrOptions`](#stv_cstrOptions) to apply each element. 
+
+**Return:**
+- `mem` if buffer is large enough; `NULL` otherwise.
 
 ---
 
@@ -1173,3 +1183,33 @@ Sentinel value returned by search/index functions to indicate “not found”.
 #define stv_whitespace stv_literal(" \r\n\t\v\f")
 ```
 Predefined view containing common whitespace characters (space, CR, LF, tab, vertical tab, form feed). Useful for trimming and splitting.
+
+### stv_LIST
+```c
+#define stv_LIST(...) ((strview[]){__VA_ARGS__}), (sizeof((strview[]){__VA_ARGS__}) / sizeof(strview))
+```
+Convenience macro to create an inline array of `strview` and its length.  
+Useful as a direct argument list for functions that expect a `strview` array and a count, such as [`stv_opt_join`](#stv_opt_join).
+
+**Usage:**
+```c
+char buf[32];
+strview sv1 = stv_literal("hello"), sv2 = stv_literal("world");
+stv_opt_join(stv_LIST(sv1, sv2), buf, sizeof(buf), stv_literal(", "), stv_Default);
+```
+
+### stv_PFARG / stv_PFFMT
+```c
+#define stv_PFARG(stv)                                                         \
+    (int)(stv_empty(stv) ? 0 : (stv).len > INT_MAX ? INT_MAX : (stv).len),     \
+    (stv_empty(stv) ? "" : (stv).data)
+#define stv_PFFMT       "%.*s"
+```
+Helper macros for `printf`‑style formatting of a string view.
+
+**Usage:**
+```c
+printf("data: " stv_PFFMT "\n", stv_PFARG(myview));
+```
+- Length is capped at `INT_MAX` if necessary.
+- For empty views, an empty string and length 0 are passed.

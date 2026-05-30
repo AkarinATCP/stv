@@ -66,7 +66,8 @@ int main(int argc, char* argv[]) {
 | 搜索        | `stv_search`, `stv_rev_search`, `stv_firstIndex`, `stv_lastIndex`, `stv_firstDiff`, `stv_lastDiff`    |
 | 比较        | `stv_compare`, `stv_equal`, `stv_same`, `stv_startsWith`, `stv_endsWith`, `stv_contains`, `stv_empty` |
 | 计数 / 谓词 | `stv_count`, `stv_every`, `stv_some`                                                                  |
-| 工具函数    | `stv_front`, `stv_back`, `stv_forEach`, `stv_swap`, `stv_cstr`, `stv_hash`, `stv_PFARG`, `stv_PFFMT`  |
+| 工具函数    | `stv_front`, `stv_back`, `stv_forEach`, `stv_swap`, `stv_hash`, `stv_PFARG`, `stv_PFFMT`              |
+| C字符串转换 | `stv_cstr`, `stv_opt_cstr`, `stv_opt_join`                                                            |
 | 数值解析    | `stv_ch2digit`, `stv_parseIntBase`, `stv_parseInum`, `stv_parseUnum`                                  |
 
 > [!NOTE]

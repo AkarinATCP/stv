@@ -852,6 +852,27 @@ LIB_STV_FN char* stv_cstr(strview stv, char* mem, size_t size);
 LIB_STV_FN char* stv_opt_cstr(strview stv, char* mem, size_t size, stv_cstrOptions opts);
 
 /**
+ * @brief Join an array of string views with a separator into a buffer
+ *
+ * Writes the concatenation of all views in @p stv_arr, interleaved with @p sep,
+ * into the output buffer @p mem.
+ * Each element optionally be transformed using @p opts
+ *
+ * If the array is empty, an empty string is written to @p mem, provided the
+ * buffer has at least one byte.
+ *
+ * @param stv_arr  Array of strview to join (may be NULL only if arr_len == 0)
+ * @param arr_len  Number of elements in the array
+ * @param mem      Destination buffer
+ * @param size     Size of the destination buffer in bytes
+ * @param sep      Separator to insert between elements (may be empty)
+ * @param opts     Bitwise combination of stv_cstrOptions to apply each element
+ * @return mem on success, NULL if the buffer is too small or mem is NULL
+ */
+LIB_STV_FN char* stv_opt_join(strview stv_arr[], size_t arr_len, char* mem, size_t size, strview sep,
+                              stv_cstrOptions opts);
+
+/**
  * @brief Convert a character to its numeric digit value (0-35)
  *
  * @param ch Input character
@@ -931,6 +952,21 @@ LIB_STV_FN uintmax_t stv_parseUnum(strview stv, int base, strview* remaining);
 
 /** @brief Represents the end position (equivalent to stv_npos) */
 #define stv_end (stv_npos)
+
+/**
+ * @brief Convenience macro to create a strview array and its length
+ *
+ * Expands to a compound literal array of strview and its element count.
+ * Designed for use with functions that take a strview array and a length,
+ * such as stv_opt_join().
+ *
+ * Usage:
+ *      strview sv1 = stv_literal("a"), sv2 = stv_literal("b")
+ *      stv_opt_join(stv_LIST(sv1, sv2), mem, size, sep, opts);
+ *
+ * @param ... Variadic list of strview expressions
+ */
+#define stv_LIST(...) ((strview[]){__VA_ARGS__}), (sizeof((strview[]){__VA_ARGS__}) / sizeof(strview))
 
 /**
  * @brief Helper macro for printf-style formatting of a string view
@@ -1713,6 +1749,44 @@ LIB_STV_FN char* stv_opt_cstr(strview stv, char* mem, size_t size, stv_cstrOptio
         }
     }
     mem[endidx] = '\0';
+    return mem;
+}
+
+LIB_STV_FN char* stv_opt_join(strview stv_arr[], size_t arr_len, char* mem, size_t size, strview sep,
+                              stv_cstrOptions opts) {
+    if (mem == nullptr || (stv_arr == nullptr && arr_len > 0)) {
+        return nullptr;
+    }
+
+    if (arr_len == 0 && size >= 1) {
+        *mem = '\0';
+        return mem;
+    }
+
+    size_t needed = 1;
+    if (arr_len > 0) {
+        needed += sep.len * (arr_len - 1);
+        for (size_t i = 0; i < arr_len; i++) {
+            needed += stv_arr[i].len;
+        }
+    }
+
+    if (size < needed) {
+        return nullptr;
+    }
+
+    char*        ptr     = mem;
+    const size_t sep_len = sep.len;
+    for (size_t i = 0; i < arr_len; i++) {
+        strview sv = stv_arr[i];
+        stv_opt_cstr(sv, ptr, size, opts);
+        ptr += sv.len, size -= sv.len;
+        if (i != arr_len - 1) {
+            stv_cstr(sep, ptr, size);
+            ptr += sep.len, size -= sep.len;
+        }
+    }
+
     return mem;
 }
 

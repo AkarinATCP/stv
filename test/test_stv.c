@@ -1357,6 +1357,119 @@ void test_stv_cstr_empty_view(void) {
 }
 
 /* ========================================================================== */
+/*  stv_opt_join                                                              */
+/* ========================================================================== */
+
+void test_stv_opt_join_empty_array(void) {
+    char    buf[4] = {0};
+    strview sep    = stv_literal(",");
+    char*   ret    = stv_opt_join(NULL, 0, buf, sizeof(buf), sep, stv_Default);
+    TEST_ASSERT_EQUAL_PTR(buf, ret);
+    TEST_ASSERT_EQUAL_STRING("", buf);
+}
+
+void test_stv_opt_join_null_array_with_zero_len(void) {
+    char  buf[1] = {0};
+    char* ret    = stv_opt_join(NULL, 0, buf, sizeof(buf), stv_nullstv, stv_Default);
+    TEST_ASSERT_EQUAL_PTR(buf, ret);
+    TEST_ASSERT_EQUAL_STRING("", buf);
+}
+
+void test_stv_opt_join_null_array_with_nonzero_len(void) {
+    char    buf[10];
+    strview sep = stv_literal(",");
+    char*   ret = stv_opt_join(NULL, 1, buf, sizeof(buf), sep, stv_Default);
+    TEST_ASSERT_NULL(ret);
+}
+
+void test_stv_opt_join_single_element(void) {
+    strview arr[] = {stv_literal("Hello")};
+    char    buf[10];
+    strview sep = stv_literal(",");
+    char*   ret = stv_opt_join(arr, 1, buf, sizeof(buf), sep, stv_Default);
+    TEST_ASSERT_EQUAL_PTR(buf, ret);
+    TEST_ASSERT_EQUAL_STRING("Hello", buf);
+}
+
+void test_stv_opt_join_multiple_elements(void) {
+    strview arr[] = {stv_literal("a"), stv_literal("b"), stv_literal("c")};
+    char    buf[10];
+    strview sep = stv_literal(",");
+    char*   ret = stv_opt_join(arr, 3, buf, sizeof(buf), sep, stv_Default);
+    TEST_ASSERT_EQUAL_PTR(buf, ret);
+    TEST_ASSERT_EQUAL_STRING("a,b,c", buf);
+}
+
+void test_stv_opt_join_empty_separator(void) {
+    strview arr[] = {stv_literal("1"), stv_literal("2"), stv_literal("3")};
+    char    buf[10];
+    strview sep = stv_nullstv;
+    char*   ret = stv_opt_join(arr, 3, buf, sizeof(buf), sep, stv_Default);
+    TEST_ASSERT_EQUAL_PTR(buf, ret);
+    TEST_ASSERT_EQUAL_STRING("123", buf);
+}
+
+void test_stv_opt_join_with_empty_elements(void) {
+    strview arr[] = {stv_literal("a"), stv_nullstv, stv_literal("c")};
+    char    buf[10];
+    strview sep = stv_literal(",");
+    char*   ret = stv_opt_join(arr, 3, buf, sizeof(buf), sep, stv_Default);
+    TEST_ASSERT_EQUAL_PTR(buf, ret);
+    TEST_ASSERT_EQUAL_STRING("a,,c", buf);
+}
+
+void test_stv_opt_join_with_options(void) {
+    strview arr[] = {stv_literal("Hello"), stv_literal("World")};
+    char    buf[20];
+    strview sep = stv_literal("-");
+    char*   ret = stv_opt_join(arr, 2, buf, sizeof(buf), sep, stv_ToUpper);
+    TEST_ASSERT_EQUAL_PTR(buf, ret);
+    TEST_ASSERT_EQUAL_STRING("HELLO-WORLD", buf);
+}
+
+void test_stv_opt_join_reverse_elements(void) {
+    strview arr[] = {stv_literal("abc"), stv_literal("123")};
+    char    buf[10];
+    strview sep = stv_literal(",");
+    char*   ret = stv_opt_join(arr, 2, buf, sizeof(buf), sep, stv_Reverse);
+    TEST_ASSERT_EQUAL_PTR(buf, ret);
+    TEST_ASSERT_EQUAL_STRING("cba,321", buf);
+}
+
+void test_stv_opt_join_buffer_too_small(void) {
+    strview arr[] = {stv_literal("long"), stv_literal("string")};
+    char    buf[5]; /* too small */
+    strview sep = stv_literal(",");
+    char*   ret = stv_opt_join(arr, 2, buf, sizeof(buf), sep, stv_Default);
+    TEST_ASSERT_NULL(ret);
+}
+
+void test_stv_opt_join_buffer_exact_size(void) {
+    strview arr[] = {stv_literal("ab"), stv_literal("cd")};
+    char    buf[6];
+    strview sep = stv_literal(",");
+    char*   ret = stv_opt_join(arr, 2, buf, sizeof(buf), sep, stv_Default);
+    TEST_ASSERT_EQUAL_PTR(buf, ret);
+    TEST_ASSERT_EQUAL_STRING("ab,cd", buf);
+}
+
+void test_stv_opt_join_null_mem(void) {
+    strview arr[] = {stv_literal("x")};
+    strview sep   = stv_literal(",");
+    char*   ret   = stv_opt_join(arr, 1, NULL, 10, sep, stv_Default);
+    TEST_ASSERT_NULL(ret);
+}
+
+void test_stv_opt_join_separator_with_non_ascii(void) {
+    strview arr[] = {stv_literal("hello"), stv_literal("world")};
+    char    buf[20];
+    strview sep = stv_literal(" - ");
+    char*   ret = stv_opt_join(arr, 2, buf, sizeof(buf), sep, stv_Default);
+    TEST_ASSERT_EQUAL_PTR(buf, ret);
+    TEST_ASSERT_EQUAL_STRING("hello - world", buf);
+}
+
+/* ========================================================================== */
 /*  stv_ch2digit                                                              */
 /* ========================================================================== */
 
@@ -1691,8 +1804,17 @@ void test_stv_parseUnum_empty(void) {
 }
 
 /* ========================================================================== */
-/*  stv_PFARG / stv_PFFMT                                                     */
+/*  stv_LIST / stv_PFARG / stv_PFFMT                                          */
 /* ========================================================================== */
+
+void test_stv_LIST_macro(void) {
+    strview sv1 = stv_literal("a"), sv2 = stv_literal("b"), sv3 = stv_literal("c");
+    char    buf[10];
+    strview sep = stv_literal(",");
+    char*   ret = stv_opt_join(stv_LIST(sv1, sv2, sv3), buf, sizeof(buf), sep, stv_Default);
+    TEST_ASSERT_EQUAL_PTR(buf, ret);
+    TEST_ASSERT_EQUAL_STRING("a,b,c", buf);
+}
 
 void test_stv_printf_macro(void) {
     strview sv = stv_literal("test");
@@ -1946,6 +2068,21 @@ int main(void) {
     RUN_TEST(test_stv_opt_cstr_swapcase);
     RUN_TEST(test_stv_cstr_empty_view);
 
+    /* stv_opt_join */
+    RUN_TEST(test_stv_opt_join_empty_array);
+    RUN_TEST(test_stv_opt_join_null_array_with_zero_len);
+    RUN_TEST(test_stv_opt_join_null_array_with_nonzero_len);
+    RUN_TEST(test_stv_opt_join_single_element);
+    RUN_TEST(test_stv_opt_join_multiple_elements);
+    RUN_TEST(test_stv_opt_join_empty_separator);
+    RUN_TEST(test_stv_opt_join_with_empty_elements);
+    RUN_TEST(test_stv_opt_join_with_options);
+    RUN_TEST(test_stv_opt_join_reverse_elements);
+    RUN_TEST(test_stv_opt_join_buffer_too_small);
+    RUN_TEST(test_stv_opt_join_buffer_exact_size);
+    RUN_TEST(test_stv_opt_join_null_mem);
+    RUN_TEST(test_stv_opt_join_separator_with_non_ascii);
+
     /* stv_ch2digit */
     RUN_TEST(test_stv_ch2digit_digits);
     RUN_TEST(test_stv_ch2digit_uppercase);
@@ -1994,7 +2131,8 @@ int main(void) {
     RUN_TEST(test_stv_parseUnum_overflow_negative);
     RUN_TEST(test_stv_parseUnum_empty);
 
-    /* printf macros */
+    /* macros */
+    RUN_TEST(test_stv_LIST_macro);
     RUN_TEST(test_stv_printf_macro);
     RUN_TEST(test_stv_printf_macro_empty);
 

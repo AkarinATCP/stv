@@ -98,9 +98,10 @@
   - [stv_swap](#stv_swap)
   - [stv_hash](#stv_hash)
   - [stv_hash_FNV1a](#stv_hash_fnv1a)
+- [C字符串转换](#C字符串转换)
   - [stv_cstr](#stv_cstr)
   - [stv_opt_cstr](#stv_opt_cstr)
-  - [stv_PFARG / stv_PFFMT](#stv_pfarg--stv_pffmt)
+  - [stv_opt_join](#stv_opt_join)
 - [数值解析](#数值解析)
   - [stv_ch2digit](#stv_ch2digit)
   - [stv_parseIntBase](#stv_parseintbase)
@@ -111,6 +112,8 @@
   - [stv_end](#stv_end)
   - [stv_npos](#stv_npos)
   - [stv_whitespace](#stv_whitespace)
+  - [stv_LIST](#stv_list)
+  - [stv_PFARG / stv_PFFMT](#stv_pfarg--stv_pffmt)
 
 ---
 
@@ -1028,6 +1031,10 @@ size_t stv_hash_FNV1a(strview stv);
 **返回值：**
 - 哈希值；若视图为空或不支持的平台宽度返回 `0`。
 
+---
+
+## C字符串转换
+
 ### stv_cstr
 ```c
 char* stv_cstr(strview stv, char* mem, size_t size);
@@ -1052,26 +1059,29 @@ char* stv_opt_cstr(strview stv, char* mem, size_t size, stv_cstrOptions opts);
 - `stv` : 源视图。
 - `mem` : 目标缓冲区。
 - `size` : 缓冲区大小。
-- `opts` : `stv_cstrOptions` 的按位组合。
+- `opts` : [`stv_cstrOptions`](#stv_cstroptions) 的按位组合。
 
 **返回值：**
 - 若缓冲区足够大返回 `mem`；否则返回 `NULL`。
 
-### stv_PFARG / stv_PFFMT
+### stv_opt_join
 ```c
-#define stv_PFARG(stv)                                                         \
-    (int)(stv_empty(stv) ? 0 : (stv).len > INT_MAX ? INT_MAX : (stv).len),     \
-    (stv_empty(stv) ? "" : (stv).data)
-#define stv_PFFMT       "%.*s"
+char* stv_opt_join(strview stv_arr[], size_t arr_len, char* mem, size_t size, strview sep, stv_cstrOptions opts);
 ```
-用于 `printf` 风格格式化字符串视图的辅助宏。
+将字符串视图数组连接成一个 C 字符串，每对元素之间插入分隔符。  
+每个元素可以使用给定的 `opts` 可选的进行转换。
+若数组为空且缓冲区至少有 1 字节空间，则写入空字符串。
 
-**用法：**
-```c
-printf("data: " stv_PFFMT "\n", stv_PFARG(myview));
-```
-- 若视图长度超过 `INT_MAX`，长度将被截断。
-- 对于空视图，传入空字符串和长度 0。
+**参数：**
+- `stv_arr` : 要连接的 `strview` 数组。仅当 `arr_len` 为 0 时可为 `NULL`。
+- `arr_len` : 数组中的元素个数。
+- `mem` : 目标缓冲区。
+- `size` : 目标缓冲区的字节大小。
+- `sep` : 在元素之间插入的分隔符，可为空。
+- `opts` : 应用于每个元素的转换选项（[`stv_cstrOptions`](#stv_cstroptions) 的按位组合）。
+
+**返回值：**
+- 若缓冲区足够大返回 `mem`；否则返回 `NULL`。
 
 ---
 
@@ -1169,3 +1179,33 @@ uintmax_t stv_parseUnum(strview stv, int base, strview* remaining);
 #define stv_whitespace stv_literal(" \r\n\t\v\f")
 ```
 包含常见空白字符（空格、CR、LF、制表符、垂直制表符、换页符）的预定义视图，常用于修剪和分割。
+
+### stv_LIST
+```c
+#define stv_LIST(...) ((strview[]){__VA_ARGS__}), (sizeof((strview[]){__VA_ARGS__}) / sizeof(strview))
+```
+便捷宏，用于创建内联的 `strview` 数组及其长度。  
+适合作为需要 `strview` 数组和计数的函数的直接参数，例如 [`stv_opt_join`](#stv_opt_join)。
+
+**示例：**
+```c
+char buf[32];
+strview sv1 = stv_literal("hello"), sv2 = stv_literal("world");
+stv_opt_join(stv_LIST(sv1, sv2), buf, sizeof(buf), stv_literal(", "), stv_Default);
+```
+
+### stv_PFARG / stv_PFFMT
+```c
+#define stv_PFARG(stv)                                                         \
+    (int)(stv_empty(stv) ? 0 : (stv).len > INT_MAX ? INT_MAX : (stv).len),     \
+    (stv_empty(stv) ? "" : (stv).data)
+#define stv_PFFMT       "%.*s"
+```
+用于 `printf` 风格格式化字符串视图的辅助宏。
+
+**用法：**
+```c
+printf("data: " stv_PFFMT "\n", stv_PFARG(myview));
+```
+- 若视图长度超过 `INT_MAX`，长度将被截断。
+- 对于空视图，传入空字符串和长度 0。
