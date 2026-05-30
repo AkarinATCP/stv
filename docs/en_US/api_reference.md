@@ -95,6 +95,7 @@
   - [stv_back](#stv_back)
   - [stv_at](#stv_at)
   - [stv_forEach](#stv_foreach)
+  - [stv_forEachRev](#stv_foreachrev)
   - [stv_swap](#stv_swap)
   - [stv_hash](#stv_hash)
   - [stv_hash_FNV1a](#stv_hash_fnv1a)
@@ -970,7 +971,22 @@ Access the character at the specified index.
 ```c
 void stv_forEach(strview stv, stv_forEachFn callback);
 ```
-Iterate over each character of the view. The callback receives the character, its index, and the original view as context. If the view is empty, the callback is never called.
+Iterate over each character of the view.  
+The callback receives the character, its index, and the original view as context. If the view is empty or callback is NULL, the callback is never called.
+
+**Parameters:**
+- `stv` : View to iterate.
+- `callback` : Callback of type [`stv_forEachFn`](#stv_foreachfn).
+
+**Return:**
+- None.
+
+### stv_forEachRev
+```c
+void stv_forEachRev(strview stv, stv_forEachFn callback);
+```
+Iterate over each character of the view in **reverse** order.  
+The callback receives the character, its index, and the original view as context. If the view is empty or callback is NULL, the callback is never called.
 
 **Parameters:**
 - `stv` : View to iterate.

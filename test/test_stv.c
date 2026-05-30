@@ -846,6 +846,7 @@ void test_stv_firstCharClass_empty(void) {
 /*  Generic macro tests                                                       */
 /* ========================================================================== */
 
+#ifdef LIB_STV_GENERIC
 void test_stv_trim_generic_charset(void) {
     strview sv      = stv_literal("  hello  ");
     strview trimmed = stv_trim(sv, stv_whitespace);
@@ -906,9 +907,10 @@ void test_stv_some_generic(void) {
     TEST_ASSERT_TRUE(stv_some(sv, isdigit));
     TEST_ASSERT_FALSE(stv_some(sv, 'x'));
 }
+#endif /* ifdef  LIB_STV_GENERIC */
 
 /* ========================================================================== */
-/*  Hash FUnctions                                                            */
+/*  Hash Functions                                                            */
 /* ========================================================================== */
 
 void test_stv_hash_empty(void) {
@@ -1252,6 +1254,17 @@ void test_stv_forEach_single_char(void) {
 
     TEST_ASSERT_EQUAL_INT(1, foreach_call_count);
     TEST_ASSERT_EQUAL_CHAR('X', foreach_last_char);
+    TEST_ASSERT_EQUAL_size_t(0, foreach_last_index);
+    TEST_ASSERT_TRUE(stv_equal(sv, foreach_last_view));
+}
+
+void test_stv_forEachRev_normal(void) {
+    strview sv         = stv_literal("abc");
+    foreach_call_count = 0;
+    stv_forEachRev(sv, callback_foreach_test);
+
+    TEST_ASSERT_EQUAL_INT(3, foreach_call_count);
+    TEST_ASSERT_EQUAL_CHAR('a', foreach_last_char);
     TEST_ASSERT_EQUAL_size_t(0, foreach_last_index);
     TEST_ASSERT_TRUE(stv_equal(sv, foreach_last_view));
 }
@@ -1835,6 +1848,7 @@ int main(void) {
     RUN_TEST(test_stv_firstCharset_empty);
     RUN_TEST(test_stv_firstCharClass_empty);
 
+#ifdef LIB_STV_GENERIC
     /* generic macros */
     RUN_TEST(test_stv_trim_generic_charset);
     RUN_TEST(test_stv_trim_generic_fn);
@@ -1845,6 +1859,7 @@ int main(void) {
     RUN_TEST(test_stv_count_generic);
     RUN_TEST(test_stv_every_generic);
     RUN_TEST(test_stv_some_generic);
+#endif /* ifdef LIB_STV_GENERIC */
 
     /* hash functions */
     RUN_TEST(test_stv_hash_empty);
@@ -1915,6 +1930,7 @@ int main(void) {
     RUN_TEST(test_stv_forEach_empty);
     RUN_TEST(test_stv_forEach_normal);
     RUN_TEST(test_stv_forEach_single_char);
+    RUN_TEST(test_stv_forEachRev_normal);
 
     /* swap */
     RUN_TEST(test_stv_swap);

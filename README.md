@@ -67,7 +67,7 @@ A quick overview of the main function groups:
 | Search             | `stv_search`, `stv_rev_search`, `stv_firstIndex`, `stv_lastIndex`, `stv_firstDiff`, `stv_lastDiff`    |
 | Comparison         | `stv_compare`, `stv_equal`, `stv_same`, `stv_startsWith`, `stv_endsWith`, `stv_contains`, `stv_empty` |
 | Count / Predicates | `stv_count`, `stv_every`, `stv_some`                                                                  |
-| Utilities          | `stv_front`, `stv_back`, `stv_at`, `stv_swap`, `stv_cstr`, `stv_hash`, `stv_PFARG`, `stv_PFFMT`       |
+| Utilities          | `stv_front`, `stv_back`, `stv_forEach`, `stv_swap`, `stv_cstr`, `stv_hash`, `stv_PFARG`, `stv_PFFMT`  |
 | Number Parsing     | `stv_ch2digit`, `stv_parseIntBase`, `stv_parseInum`, `stv_parseUnum`                                  |
 
 > [!NOTE]

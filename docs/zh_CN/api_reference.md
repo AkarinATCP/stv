@@ -94,6 +94,7 @@
   - [stv_back](#stv_back)
   - [stv_at](#stv_at)
   - [stv_forEach](#stv_foreach)
+  - [stv_forEachRev](#stv_foreachrev)
   - [stv_swap](#stv_swap)
   - [stv_hash](#stv_hash)
   - [stv_hash_FNV1a](#stv_hash_fnv1a)
@@ -968,7 +969,20 @@ char stv_at(strview stv, size_t idx);
 ```c
 void stv_forEach(strview stv, stv_forEachFn callback);
 ```
-遍历视图中的每个字符。回调接收字符、其索引以及作为上下文的原始视图。若视图为空，则不会调用回调。
+遍历视图中的每个字符。回调接收字符、其索引以及作为上下文的原始视图。若视图或回调为空，则不会调用回调。
+
+**参数：**
+- `stv` : 要遍历的视图。
+- `callback` : 类型为 [`stv_forEachFn`](#stv_foreachfn) 的回调。
+
+**返回值：**
+- 无。
+
+### stv_forEachRev
+```c
+void stv_forEachRev(strview stv, stv_forEachFn callback);
+```
+**逆序**遍历视图中的每个字符。回调接收字符、其索引以及作为上下文的原始视图。若视图或回调为空，则不会调用回调。
 
 **参数：**
 - `stv` : 要遍历的视图。

@@ -47,6 +47,10 @@
 extern "C" {
 #endif // !__cplusplus
 
+#if defined(__STDC_VERSION__) && __STDC_VERSION__ >= 201112L
+    #define LIB_STV_GENERIC
+#endif
+
 #if defined(__cplusplus) && __cplusplus >= 201103L
     #include <limits.h>
     #include <stddef.h>
@@ -306,19 +310,21 @@ LIB_STV_FN strview stv_trimChs(strview stv, strview charset);
  */
 LIB_STV_FN strview stv_trimIf(strview stv, stv_charClassFn handle);
 
-/**
- * @brief Trim characters from the beginning of a string view (generic)
- *
- * Dispatches to stv_trimStartChs() or stv_trimStartIf() based on the type of @p target:
- * - If @p target is a strview, it is treated as a character set.
- * - If @p target is a stv_charClassFn, it is treated as a character classification function.
- *
- * @param stv    Source string view
- * @param target A strview charset or a stv_charClassFn function pointer
- * @return A new view with leading matching characters removed
- */
-#define stv_trimStart(stv, target)                                                                                     \
-    _Generic((target), strview: stv_trimStartChs, stv_charClassFn: stv_trimStartIf)((stv), (target))
+#ifdef LIB_STV_GENERIC
+    /**
+     * @brief Trim characters from the beginning of a string view (generic)
+     *
+     * Dispatches to stv_trimStartChs() or stv_trimStartIf() based on the type of @p target:
+     * - If @p target is a strview, it is treated as a character set.
+     * - If @p target is a stv_charClassFn, it is treated as a character classification function.
+     *
+     * @param stv    Source string view
+     * @param target A strview charset or a stv_charClassFn function pointer
+     * @return A new view with leading matching characters removed
+     */
+    #define stv_trimStart(stv, target)                                                                                 \
+        _Generic((target), strview: stv_trimStartChs, stv_charClassFn: stv_trimStartIf)((stv), (target))
+#endif // LIB_STV_GENERIC
 
 /**
  * @brief Remove any characters belonging to a given charset from the beginning of the view
@@ -338,19 +344,21 @@ LIB_STV_FN strview stv_trimStartChs(strview stv, strview charset);
  */
 LIB_STV_FN strview stv_trimStartIf(strview stv, stv_charClassFn handle);
 
-/**
- * @brief Trim characters from the end of a string view (generic)
- *
- * Dispatches to stv_trimEndChs() or stv_trimEndIf() based on the type of @p target:
- * - If @p target is a strview, it is treated as a character set.
- * - If @p target is a stv_charClassFn, it is treated as a character classification function.
- *
- * @param stv    Source string view
- * @param target A strview charset or a stv_charClassFn function pointer
- * @return A new view with trailing matching characters removed
- */
-#define stv_trimEnd(stv, target)                                                                                       \
-    _Generic((target), strview: stv_trimEndChs, stv_charClassFn: stv_trimEndIf)((stv), (target))
+#ifdef LIB_STV_GENERIC
+    /**
+     * @brief Trim characters from the end of a string view (generic)
+     *
+     * Dispatches to stv_trimEndChs() or stv_trimEndIf() based on the type of @p target:
+     * - If @p target is a strview, it is treated as a character set.
+     * - If @p target is a stv_charClassFn, it is treated as a character classification function.
+     *
+     * @param stv    Source string view
+     * @param target A strview charset or a stv_charClassFn function pointer
+     * @return A new view with trailing matching characters removed
+     */
+    #define stv_trimEnd(stv, target)                                                                                   \
+        _Generic((target), strview: stv_trimEndChs, stv_charClassFn: stv_trimEndIf)((stv), (target))
+#endif
 
 /**
  * @brief Remove any characters belonging to a given charset from the end of the view
@@ -433,22 +441,24 @@ LIB_STV_FN size_t stv_rev_naiveSearch(strview stv_text, strview stv_pat);
  */
 LIB_STV_FN size_t stv_rev_sundaySearch(strview stv_text, strview stv_pat);
 
-/**
- * @brief Find the first occurrence of a character, charset member, or character class (generic)
- *
- * Dispatches based on the type of @p target:
- * - char:          calls stv_firstChar()
- * - strview:       calls stv_firstCharset()
- * - stv_charClassFn: calls stv_firstCharClass()
- *
- * @param stv    The string view to search
- * @param target A char, strview charset, or character classification function
- * @param invert If true, search for the first character NOT matching; otherwise search for the first match
- * @return Index of the first match, or stv_npos if not found / empty view
- */
-#define stv_firstIndex(stv, target, invert)                                                                            \
-    _Generic((target), int: stv_firstChar, strview: stv_firstCharset, stv_charClassFn: stv_firstCharClass)(            \
-        (stv), (target), (invert))
+#ifdef LIB_STV_GENERIC
+    /**
+     * @brief Find the first occurrence of a character, charset member, or character class (generic)
+     *
+     * Dispatches based on the type of @p target:
+     * - char:          calls stv_firstChar()
+     * - strview:       calls stv_firstCharset()
+     * - stv_charClassFn: calls stv_firstCharClass()
+     *
+     * @param stv    The string view to search
+     * @param target A char, strview charset, or character classification function
+     * @param invert If true, search for the first character NOT matching; otherwise search for the first match
+     * @return Index of the first match, or stv_npos if not found / empty view
+     */
+    #define stv_firstIndex(stv, target, invert)                                                                        \
+        _Generic((target), int: stv_firstChar, strview: stv_firstCharset, stv_charClassFn: stv_firstCharClass)(        \
+            (stv), (target), (invert))
+#endif
 
 /**
  * @brief Find the first occurrence of a specific character
@@ -480,22 +490,24 @@ LIB_STV_FN size_t stv_firstCharset(strview stv, strview charset, bool invert);
  */
 LIB_STV_FN size_t stv_firstCharClass(strview stv, stv_charClassFn handle, bool invert);
 
-/**
- * @brief Find the last occurrence of a character, charset member, or character class (generic)
- *
- * Dispatches based on the type of @p target:
- * - char:          calls stv_lastChar()
- * - strview:       calls stv_lastCharset()
- * - stv_charClassFn: calls stv_lastCharClass()
- *
- * @param stv    The string view to search
- * @param target A char, strview charset, or character classification function
- * @param invert If true, search for the last character NOT matching; otherwise search for the last match
- * @return Index of the last match, or stv_npos if not found / empty view
- */
-#define stv_lastIndex(stv, target, invert)                                                                             \
-    _Generic((target), int: stv_lastChar, strview: stv_lastCharset, stv_charClassFn: stv_lastCharClass)(               \
-        (stv), (target), (invert))
+#ifdef LIB_STV_GENERIC
+    /**
+     * @brief Find the last occurrence of a character, charset member, or character class (generic)
+     *
+     * Dispatches based on the type of @p target:
+     * - char:          calls stv_lastChar()
+     * - strview:       calls stv_lastCharset()
+     * - stv_charClassFn: calls stv_lastCharClass()
+     *
+     * @param stv    The string view to search
+     * @param target A char, strview charset, or character classification function
+     * @param invert If true, search for the last character NOT matching; otherwise search for the last match
+     * @return Index of the last match, or stv_npos if not found / empty view
+     */
+    #define stv_lastIndex(stv, target, invert)                                                                         \
+        _Generic((target), int: stv_lastChar, strview: stv_lastCharset, stv_charClassFn: stv_lastCharClass)(           \
+            (stv), (target), (invert))
+#endif
 
 /**
  * @brief Find the last occurrence of a specific character
@@ -553,20 +565,22 @@ LIB_STV_FN size_t stv_firstDiff(strview stv_left, strview stv_right);
  */
 LIB_STV_FN size_t stv_lastDiff(strview stv_left, strview stv_right);
 
-/**
- * @brief Count occurrences based on the type of target (generic)
- *
- * Dispatches to:
- * - stv_countChar()  if target is a char
- * - stv_countSubstr() if target is a strview
- * - stv_countIf()    if target is a stv_charClassFn
- *
- * @param stv    The string view to examine
- * @param target A char, a substring to count, or a character classification function
- * @return Number of occurrences (see individual functions for details on empty/stv_npos)
- */
-#define stv_count(stv, target)                                                                                         \
-    _Generic((target), int: stv_countChar, strview: stv_countSubstr, stv_charClassFn: stv_countIf)((stv), (target))
+#ifdef LIB_STV_GENERIC
+    /**
+     * @brief Count occurrences based on the type of target (generic)
+     *
+     * Dispatches to:
+     * - stv_countChar()  if target is a char
+     * - stv_countSubstr() if target is a strview
+     * - stv_countIf()    if target is a stv_charClassFn
+     *
+     * @param stv    The string view to examine
+     * @param target A char, a substring to count, or a character classification function
+     * @return Number of occurrences (see individual functions for details on empty/stv_npos)
+     */
+    #define stv_count(stv, target)                                                                                     \
+        _Generic((target), int: stv_countChar, strview: stv_countSubstr, stv_charClassFn: stv_countIf)((stv), (target))
+#endif
 
 /**
  * @brief Count the number of characters that satisfy a classification function
@@ -599,16 +613,18 @@ LIB_STV_FN size_t stv_countChar(strview stv, const char ch);
  */
 LIB_STV_FN size_t stv_countSubstr(strview stv, strview sub);
 
-/**
- * @brief Check if every character satisfies a condition (generic)
- *
- * Dispatches to stv_everyChar() or stv_everyIf() based on the type of @p target.
- *
- * @param stv    The string view to examine
- * @param target A char to compare, or a stv_charClassFn classification function
- * @return true if all characters satisfy the condition, false otherwise (empty view returns false)
- */
-#define stv_every(stv, target) _Generic((target), int: stv_everyChar, stv_charClassFn: stv_everyIf)((stv), (target))
+#ifdef LIB_STV_GENERIC
+    /**
+     * @brief Check if every character satisfies a condition (generic)
+     *
+     * Dispatches to stv_everyChar() or stv_everyIf() based on the type of @p target.
+     *
+     * @param stv    The string view to examine
+     * @param target A char to compare, or a stv_charClassFn classification function
+     * @return true if all characters satisfy the condition, false otherwise (empty view returns false)
+     */
+    #define stv_every(stv, target) _Generic((target), int: stv_everyChar, stv_charClassFn: stv_everyIf)((stv), (target))
+#endif
 
 /**
  * @brief Check if every character in the view satisfies a classification function
@@ -632,16 +648,18 @@ LIB_STV_FN bool stv_everyIf(strview stv, stv_charClassFn handle);
  */
 LIB_STV_FN bool stv_everyChar(strview stv, const char ch);
 
-/**
- * @brief Check if at least one character satisfies a condition (generic)
- *
- * Dispatches to stv_someChar() or stv_someIf() based on the type of @p target.
- *
- * @param stv    The string view to examine
- * @param target A char to search for, or a stv_charClassFn classification function
- * @return true if at least one character satisfies the condition, false otherwise (empty view returns false)
- */
-#define stv_some(stv, target) _Generic((target), int: stv_someChar, stv_charClassFn: stv_someIf)((stv), (target))
+#ifdef LIB_STV_GENERIC
+    /**
+     * @brief Check if at least one character satisfies a condition (generic)
+     *
+     * Dispatches to stv_someChar() or stv_someIf() based on the type of @p target.
+     *
+     * @param stv    The string view to examine
+     * @param target A char to search for, or a stv_charClassFn classification function
+     * @return true if at least one character satisfies the condition, false otherwise (empty view returns false)
+     */
+    #define stv_some(stv, target) _Generic((target), int: stv_someChar, stv_charClassFn: stv_someIf)((stv), (target))
+#endif
 
 /**
  * @brief Check if at least one character in the view satisfies a classification function
@@ -754,15 +772,28 @@ LIB_STV_FN char stv_at(strview stv, size_t idx);
 /**
  * @brief Iterate over each character of a string view
  *
- * Calls the provided callback for each character in the view, passing the character,
- * its index, and the original view (as a value copy) for context.
+ * Calls the provided callback for each character in the view
+ * passing the character, its index, and the original view for context.
  *
- * If the view is empty, the callback is never invoked.
+ * If the view is empty or callback is NULL, the callback is never invoked.
  *
  * @param stv      The string view to iterate over
  * @param callback Callback function of type stv_forEachFn
  */
 LIB_STV_FN void stv_forEach(strview stv, stv_forEachFn callback);
+
+/**
+ * @brief Iterate over each character of a string view in reverse order
+ *
+ * Calls the provided callback for each character from the last to the first,
+ * passing the character, its index, and the original view for context.
+ *
+ * If the view is empty or callback is NULL, the callback is never invoked.
+ *
+ * @param stv      The string view to iterate over
+ * @param callback Callback function of type stv_forEachFn
+ */
+LIB_STV_FN void stv_forEachRev(strview stv, stv_forEachFn callback);
 
 /**
  * @brief Swap the contents of two string views
@@ -1584,10 +1615,25 @@ LIB_STV_FN char stv_at(strview stv, size_t idx) {
 }
 
 LIB_STV_FN void stv_forEach(strview stv, stv_forEachFn callback) {
-    if (!stv_empty(stv)) {
-        const char* chr = stv.data;
-        for (size_t idx = 0; idx < stv.len; idx++, chr++) {
-            callback(*chr, idx, stv);
+    if (!stv_empty(stv) && callback) {
+        size_t      idx     = 0;
+        const char* pos     = stv.data;
+        const char* end_pos = stv.data + stv.len;
+        while (pos < end_pos) {
+            callback(*pos, idx, stv);
+            idx++, pos++;
+        }
+    }
+}
+
+LIB_STV_FN void stv_forEachRev(strview stv, stv_forEachFn callback) {
+    if (!stv_empty(stv) && callback) {
+        size_t      idx       = stv.len - 1;
+        const char* pos       = stv.data + idx;
+        const char* begin_pos = stv.data;
+        while (pos >= begin_pos) {
+            callback(*pos, idx, stv);
+            idx--, pos--;
         }
     }
 }
@@ -1671,7 +1717,7 @@ LIB_STV_FN char* stv_opt_cstr(strview stv, char* mem, size_t size, stv_cstrOptio
 }
 
 LIB_STV_FN intmax_t stv_parseInum(strview stv, int base, strview* remaining) {
-    stv = stv_trimStart(stv, stv_whitespace);
+    stv = stv_trimStartChs(stv, stv_whitespace);
     if (stv_empty(stv)) {
         if (remaining) {
             *remaining = stv;
@@ -1738,7 +1784,7 @@ LIB_STV_FN intmax_t stv_parseInum(strview stv, int base, strview* remaining) {
 }
 
 LIB_STV_FN uintmax_t stv_parseUnum(strview stv, int base, strview* remaining) {
-    stv = stv_trimStart(stv, stv_whitespace);
+    stv = stv_trimStartChs(stv, stv_whitespace);
     if (stv_empty(stv)) {
         if (remaining) {
             *remaining = stv;
