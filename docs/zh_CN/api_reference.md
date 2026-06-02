@@ -7,7 +7,7 @@
 
 ## 目录
 
-- [类型](#类型)
+- [类型定义](#类型定义)
   - [strview](#strview)
   - [stv_charClassFn](#stv_charclassfn)
   - [stv_forEachFn](#stv_foreachfn)
@@ -15,1143 +15,1656 @@
 - [创建](#创建)
   - [stv_new](#stv_new)
   - [stv_create](#stv_create)
-  - [stv_literal](#stv_literal)
-  - [stv_makestv](#stv_makestv)
-  - [stv_nullstv](#stv_nullstv)
+  - [stv_literal（宏）](#stv_literal宏)
+  - [stv_makestv（宏）](#stv_makestv宏)
+  - [stv_nullstv（宏）](#stv_nullstv宏)
 - [切片](#切片)
   - [stv_slice](#stv_slice)
   - [stv_removeStart](#stv_removestart)
   - [stv_removeEnd](#stv_removeend)
   - [stv_removePrefix](#stv_removeprefix)
+  - [stv_removePrefixNocase](#stv_removeprefixnocase)
   - [stv_removeSuffix](#stv_removesuffix)
+  - [stv_removeSuffixNocase](#stv_removesuffixnocase)
 - [分割](#分割)
   - [stv_split](#stv_split)
   - [stv_splitLines](#stv_splitlines)
   - [stv_splitWords](#stv_splitwords)
-  - [stv_beforeDelim](#stv_beforedelim)
-  - [stv_afterDelim](#stv_afterdelim)
+  - [stv_beforeFirstDelim](#stv_beforefirstdelim)
+  - [stv_beforeLastDelim](#stv_beforelastdelim)
+  - [stv_afterFirstDelim](#stv_afterfirstdelim)
+  - [stv_afterLastDelim](#stv_afterlastdelim)
 - [修剪](#修剪)
-  - [泛型修剪宏](#泛型修剪宏)
-    - [stv_trim](#stv_trim)
-    - [stv_trimStart](#stv_trimstart)
-    - [stv_trimEnd](#stv_trimend)
-  - [基于字符集的修剪](#基于字符集的修剪)
-    - [stv_trimChs](#stv_trimchs)
-    - [stv_trimStartChs](#stv_trimstartchs)
-    - [stv_trimEndChs](#stv_trimendchs)
-  - [基于分类函数的修剪](#基于分类函数的修剪)
-    - [stv_trimIf](#stv_trimif)
-    - [stv_trimStartIf](#stv_trimstartif)
-    - [stv_trimEndIf](#stv_trimendif)
+  - [stv_trim（宏）](#stv_trim宏)
+  - [stv_trimStart（宏）](#stv_trimstart宏)
+  - [stv_trimEnd（宏）](#stv_trimend宏)
+  - [stv_trimChs](#stv_trimchs)
+  - [stv_trimStartChs](#stv_trimstartchs)
+  - [stv_trimEndChs](#stv_trimendchs)
+  - [stv_trimIf](#stv_trimif)
+  - [stv_trimStartIf](#stv_trimstartif)
+  - [stv_trimEndIf](#stv_trimendif)
+  - [stv_whitespace（宏）](#stv_whitespace宏)
 - [搜索](#搜索)
+  - [stv_firstIndex（宏）](#stv_firstindex宏)
+  - [stv_lastIndex（宏）](#stv_lastindex宏)
+  - [stv_firstChar](#stv_firstchar)
+  - [stv_lastChar](#stv_lastchar)
+  - [stv_firstCharset](#stv_firstcharset)
+  - [stv_lastCharset](#stv_lastcharset)
+  - [stv_firstCharClass](#stv_firstcharclass)
+  - [stv_lastCharClass](#stv_lastcharclass)
   - [stv_search](#stv_search)
   - [stv_naiveSearch](#stv_naivesearch)
   - [stv_sundaySearch](#stv_sundaysearch)
-- [逆向搜索](#逆向搜索)
   - [stv_rev_search](#stv_rev_search)
   - [stv_rev_naiveSearch](#stv_rev_naivesearch)
   - [stv_rev_sundaySearch](#stv_rev_sundaysearch)
-- [首尾索引查询](#首尾索引查询)
-  - [泛型宏](#泛型宏)
-    - [stv_firstIndex](#stv_firstindex)
-    - [stv_lastIndex](#stv_lastindex)
-  - [字符查找](#字符查找)
-    - [stv_firstChar](#stv_firstchar)
-    - [stv_lastChar](#stv_lastchar)
-  - [字符集查找](#字符集查找)
-    - [stv_firstCharset](#stv_firstcharset)
-    - [stv_lastCharset](#stv_lastcharset)
-  - [分类函数查找](#分类函数查找)
-    - [stv_firstCharClass](#stv_firstcharclass)
-    - [stv_lastCharClass](#stv_lastcharclass)
-- [差异检测](#差异检测)
+- [比较](#比较)
   - [stv_firstDiff](#stv_firstdiff)
   - [stv_lastDiff](#stv_lastdiff)
-- [计数](#计数)
-  - [泛型宏](#泛型宏-1)
-    - [stv_count](#stv_count)
+  - [stv_compare](#stv_compare)
+  - [stv_compareNocase](#stv_comparenocase)
+  - [stv_startsWith](#stv_startswith)
+  - [stv_startsWithNocase](#stv_startswithnocase)
+  - [stv_endsWith](#stv_endswith)
+  - [stv_endsWithNocase](#stv_endswithnocase)
+  - [stv_contains](#stv_contains)
+  - [stv_containsNocase](#stv_containsnocase)
+  - [stv_equal](#stv_equal)
+  - [stv_equalNocase](#stv_equalnocase)
+  - [stv_same](#stv_same)
+  - [stv_empty](#stv_empty)
+- [计数 / 谓词](#计数--谓词)
+  - [stv_count（宏）](#stv_count宏)
   - [stv_countIf](#stv_countif)
   - [stv_countChar](#stv_countchar)
   - [stv_countSubstr](#stv_countsubstr)
-- [谓词判断](#谓词判断)
-  - [泛型宏](#泛型宏-2)
-    - [stv_every](#stv_every)
-    - [stv_some](#stv_some)
+  - [stv_every（宏）](#stv_every宏)
   - [stv_everyIf](#stv_everyif)
   - [stv_everyChar](#stv_everychar)
+  - [stv_some（宏）](#stv_some宏)
   - [stv_someIf](#stv_someif)
   - [stv_someChar](#stv_somechar)
-- [比较与检查](#比较与检查)
-  - [stv_compare](#stv_compare)
-  - [stv_equal](#stv_equal)
-  - [stv_same](#stv_same)
-  - [stv_startsWith](#stv_startswith)
-  - [stv_endsWith](#stv_endswith)
-  - [stv_contains](#stv_contains)
-  - [stv_empty](#stv_empty)
-- [工具方法](#工具方法)
+- [工具函数](#工具函数)
   - [stv_front](#stv_front)
   - [stv_back](#stv_back)
   - [stv_at](#stv_at)
   - [stv_forEach](#stv_foreach)
+  - [stv_forEachRev](#stv_foreachrev)
   - [stv_swap](#stv_swap)
   - [stv_hash](#stv_hash)
   - [stv_hash_FNV1a](#stv_hash_fnv1a)
+  - [stv_PFARG / stv_PFFMT（宏）](#stv_pfarg--stv_pffmt宏)
+  - [stv_LIST（宏）](#stv_list宏)
+  - [stv_npos / stv_begin / stv_end（宏）](#stv_npos--stv_begin--stv_end宏)
+- [C 字符串转换](#c-字符串转换)
   - [stv_cstr](#stv_cstr)
   - [stv_opt_cstr](#stv_opt_cstr)
-  - [stv_PFARG / stv_PFFMT](#stv_pfarg--stv_pffmt)
+  - [stv_opt_join](#stv_opt_join)
 - [数值解析](#数值解析)
-  - [stv_ch2digit](#stv_ch2digit)
-  - [stv_parseIntBase](#stv_parseintbase)
   - [stv_parseInum](#stv_parseinum)
   - [stv_parseUnum](#stv_parseunum)
-- [宏与常量](#宏与常量)
-  - [stv_begin](#stv_begin)
-  - [stv_end](#stv_end)
-  - [stv_npos](#stv_npos)
-  - [stv_whitespace](#stv_whitespace)
+  - [stv_ch2digit](#stv_ch2digit)
+  - [stv_parseIntBase](#stv_parseintbase)
 
 ---
 
-## 类型
+## 类型定义
 
-### strview
+### `strview`
 ```c
-typedef struct stv_strview_t strview;
-struct stv_strview_t {
+typedef struct {
     const char* data;
     size_t      len;
-};
+} strview;
 ```
-字符串视图类型。表示字符串的只读片段，不以空字符结尾，且不拥有数据的所有权。
+字符串视图，表示一段只读字符序列。`data` 指向首字符（可为 NULL），`len` 是字节数。它不以空字符结尾，且不拥有内存。
 
-**成员：**
-- `data` : 指向首个字符的指针。
-- `len` : 视图的字节长度。
-
-### stv_charClassFn
+### `stv_charClassFn`
 ```c
 typedef int (*stv_charClassFn)(int);
 ```
-字符分类函数指针类型。应表现为标准 `is*` 系列函数（如 `isdigit`、`isspace`）——若字符属于该类则返回非零值，否则返回零。
+字符分类函数指针，如 `isspace`、`isdigit`。接收一个字符，返回非零表示属于该类别。
 
-### stv_forEachFn
+### `stv_forEachFn`
 ```c
 typedef void (*stv_forEachFn)(char ch, size_t idx, strview ctx);
 ```
-[`stv_forEach`](#stv_foreach) 的回调函数指针类型。
-- `ch` : 当前字符。
-- `idx` : 字符的从零开始的索引。
-- `ctx` : 迭代传入的原始 `strview`。
+遍历回调类型。参数为当前字符、索引和原始视图。
 
-### stv_cstrOptions
+### `stv_cstrOptions`
 ```c
 typedef enum {
-    stv_Default = 0,  // 0b00000000
-    stv_ToUpper = 1,  // 0b00000001
-    stv_ToLower = 2,  // 0b00000010
-    stv_Reverse = 4,  // 0b00000100
+    stv_Default  = 0,
+    stv_ToUpper  = 1,
+    stv_ToLower  = 2,
+    stv_Reverse  = 4,
+    stv_Truncate = 8,
 } stv_cstrOptions;
 ```
-`stv_opt_cstr` 的按位组合选项，用于控制输出转换。
+输出选项，可位或组合：
+- `stv_Default`：无变换。
+- `stv_ToUpper`：转大写（仅 ASCII 字母）。
+- `stv_ToLower`：转小写。
+- `stv_Reverse`：反转字符顺序。
+- `stv_Truncate`：若视图长度 ≥ 缓冲区大小则截断。
 
-**枚举值：**
-- `stv_Default` (0)：无转换。
-- `stv_ToUpper` (1)：通过 ASCII 掩码转换为大写。
-- `stv_ToLower` (2)：通过 ASCII 掩码转换为小写。
-- `stv_Reverse` (4)：反转字符顺序。
-
-多个选项可通过 `|` 组合。若同时设置 `stv_ToUpper` 与 `stv_ToLower`，交换大小写（Abc -> aBC）。
+同时设置 `stv_ToUpper` 和 `stv_ToLower` 会实现大小写翻转（swapCase）。
 
 ---
 
 ## 创建
 
-### stv_new
+### `stv_new`
 ```c
 strview stv_new(const char* c_str);
 ```
-从 C 字符串创建视图（直到空终止符）。
+从 C 字符串构造视图。视图长度不含空终止符。
 
-**参数：**
-- `c_str` : 指向以空字符结尾的 C 字符串的指针，可为 `NULL`。
+示例：
+```c
+strview sv = stv_new("hello"); // sv = {"hello", 5}
+```
 
-**返回值：**
-- 从 `c_str` 到空终止符的 `strview`。若 `c_str` 为 `NULL`，则返回空视图（[`stv_nullstv`](#stv_nullstv)）。
+| 参数    | 说明                             |
+|---------|----------------------------------|
+| `c_str` | 空终止的 C 字符串指针，可为 NULL |
 
-**详情：**
-- 等价于 `stv_create(c_str, '\0', stv_npos)`。
+| 返回    | 说明                           |
+|---------|--------------------------------|
+| 新视图  | 若 `c_str` 为 NULL，返回空视图 |
 
-### stv_create
+### `stv_create`
 ```c
 strview stv_create(const char* str, unsigned char endchar, size_t maxlen);
 ```
-从连续字符序列创建视图，在指定终止字符或最大长度处停止。
+扫描 `str` 构造视图，最多扫描 `maxlen` 字节，达到上限或遇到 `endchar` 停止。
 
-**参数：**
-- `str` : 源字符串指针，可为 `NULL`。
-- `endchar` : 终止字符（在此字符前停止，该字符本身不被包含）。
-- `maxlen` : 最大扫描字节数。
+示例：
+```c
+strview sv  = stv_create("abc:def", ':', 10); // sv = {"abc", 3}
+strview sv2 = stv_create("abc", '\0', 2);     // sv2 = {"ab", 2}
+```
 
-**返回值：**
-- 从 `str` 开始直到首次遇到 `endchar` 或 `maxlen` 字节（以先到者为准）的 `strview`。若 `str` 为 `NULL`，则返回空视图。
+| 参数      | 说明                      |
+|-----------|---------------------------|
+| `str`     | 源字符串指针，可为 NULL   |
+| `endchar` | 终止字符（不包含在视图中）|
+| `maxlen`  | 最大扫描长度              |
 
-### stv_literal
+| 返回   | 说明                       |
+|--------|----------------------------|
+| 新视图 | `str` 为 NULL 时返回空视图 |
+
+### `stv_literal`（宏）
 ```c
 #define stv_literal(str) stv_makestv((str), sizeof(str) - 1)
 ```
-用字符串字面量创建视图的宏。长度在编译期通过 `sizeof` 计算。
+用字符串字面量在编译期构造视图，自动计算长度（不含空字符）。
 
-### stv_makestv
+示例：
+```c
+strview sv = stv_literal("Hello"); // sv = {"Hello", 5}
+```
+
+### `stv_makestv`（宏）
 ```c
 #ifdef __cplusplus
-    #define stv_makestv(data_v, len_v) (strview{/* .data= */ (data_v), /* .len= */ (len_v)})
+    #define stv_makestv(data_v, len_v) (strview{(data_v), (len_v)})
 #else
     #define stv_makestv(data_v, len_v) ((strview){.data = (data_v), .len = (len_v)})
 #endif
 ```
-用指针和长度构造 `strview` 的宏。
+通用构造宏，用指针和长度生成视图。
 
-### stv_nullstv
+示例：
+```c
+strview sv = stv_makestv(buf, 3); // sv = {buf, 3}
+```
+
+### `stv_nullstv`（宏）
 ```c
 #define stv_nullstv stv_makestv(nullptr, 0)
 ```
-预定义的空视图，其 `data = nullptr` 且 `len = 0`。
+预定义的空视图，`data == NULL`，`len == 0`。
 
 ---
 
 ## 切片
 
-### stv_slice
+### `stv_slice`
 ```c
 strview stv_slice(strview stv, size_t begin_pos, size_t end_pos);
 ```
-提取覆盖 `[begin_pos, end_pos)` 范围的子视图。
+提取子串视图 `[begin_pos, end_pos)`。索引越界或 `begin_pos >= end_pos` 则范围无效。
 
-**参数：**
-- `stv` : 源视图。
-- `begin_pos` : 起始索引（包含）。
-- `end_pos` : 结束索引（不包含）。可使用 [`stv_end`](#stv_end) 表示直到末尾。
+可用 [`stv_end`](#stv_npos--stv_begin--stv_end宏) 表示切片到末尾
 
-**返回值：**
-- 若范围有效，返回子视图；否则返回空视图。
+示例：
+```c
+strview sv   = stv_literal("Hello");
+strview sub  = stv_slice(sv, 1, 4);       // sub = "ell"
+strview rest = stv_slice(sv, 2, stv_end); // rest = "llo"
+```
 
-**详情：**
-- 若 `end_pos` 为 `stv_npos`（即 `stv_end`），则按 `stv.len` 处理。
-- 当 `begin_pos > end_pos`、`begin_pos > stv.len` 或 `data` 为 `NULL` 时返回空视图。
+| 参数        | 说明            |
+|-------------|-----------------|
+| `stv`       | 源视图          |
+| `begin_pos` | 起始索引（含）  |
+| `end_pos`   | 结束索引（不含）|
 
-### stv_removeStart
+| 返回   | 说明               |
+|--------|--------------------|
+| 子视图 | 范围无效时为空视图 |
+
+### `stv_removeStart`
 ```c
 strview stv_removeStart(strview stv, size_t len);
 ```
-从开头移除 `len` 个字节。等价于 `stv_slice(stv, len, stv_end)`。
+从开头移除 `len` 字节。若 `len >= stv.len` 返回空视图。相当于 `stv_slice(stv, len, stv_end)`。
 
-**参数：**
-- `stv` : 源视图。
-- `len` : 要移除的字节数。
+示例：
+```c
+strview sv = stv_removeStart(stv_literal("Hello World"), 6); // "World"
+```
 
-**返回值：**
-- 去掉前 `len` 字节的视图，若 `len >= stv.len` 则返回空视图。
+| 参数  | 说明           |
+|-------|----------------|
+| `stv` | 源视图         |
+| `len` | 要移除的字节数 |
 
-### stv_removeEnd
+| 返回   | 说明         |
+|--------|--------------|
+| 新视图 | 移除后的视图 |
+
+### `stv_removeEnd`
 ```c
 strview stv_removeEnd(strview stv, size_t len);
 ```
-从末尾移除 `len` 个字节。等价于 `stv_slice(stv, stv_begin, stv.len - len)`。
+从末尾移除 `len` 字节。若 `len >= stv.len` 返回空视图。相当于 `stv_slice(stv, stv_begin, stv.len - len)`。
 
-**参数：**
-- `stv` : 源视图。
-- `len` : 要移除的字节数。
+示例：
+```c
+strview sv = stv_removeEnd(stv_literal("Hello World"), 6); // "Hello"
+```
 
-**返回值：**
-- 去掉后 `len` 字节的视图，若 `len >= stv.len` 则返回空视图。
+| 参数  | 说明           |
+|-------|----------------|
+| `stv` | 源视图         |
+| `len` | 要移除的字节数 |
 
-### stv_removePrefix
+| 返回   | 说明             |
+|--------|------------------|
+| 新视图 | 移除后缀后的视图 |
+
+### `stv_removePrefix`
 ```c
 strview stv_removePrefix(strview stv, strview prefix);
 ```
-若视图以 `prefix` 开头，则将其移除；否则原样返回。
+若 `stv` 以 `prefix` 开头（通过 [`stv_startsWith`](#stv_startswith) 判断），则返回去除该前缀后的视图；否则返回原视图。
 
-**参数：**
-- `stv` : 源视图。
-- `prefix` : 要移除的前缀。空前缀视为匹配，返回原视图。
+示例：
+```c
+strview sv = stv_literal("http://example.com");
+strview result = stv_removePrefix(sv, stv_literal("http://"));
+// result = "example.com"
+```
 
-**返回值：**
-- 去除前缀后的视图，或原视图（若不匹配）。
+| 参数     | 说明         |
+|----------|--------------|
+| `stv`    | 源视图       |
+| `prefix` | 要移除的前缀 |
 
-### stv_removeSuffix
+| 返回 | 说明                     |
+|------|--------------------------|
+| 视图 | 去除前缀后的视图或原视图 |
+
+### `stv_removePrefixNocase`
+```c
+strview stv_removePrefixNocase(strview stv, strview prefix);
+```
+同 [`stv_removePrefix`](#stv_removeprefix)，但前缀匹配忽略大小写（通过 [`stv_startsWithNocase`](#stv_startswithnocase) 判断）。
+
+示例：
+```c
+strview sv = stv_literal("http://example.com");
+strview result = stv_removePrefixNocase(sv, stv_literal("HTTP://"));
+// result = "example.com"
+```
+
+| 参数     | 说明         |
+|----------|--------------|
+| `stv`    | 源视图       |
+| `prefix` | 要移除的前缀 |
+
+| 返回 | 说明                     |
+|------|--------------------------|
+| 视图 | 去除前缀后的视图或原视图 |
+
+### `stv_removeSuffix`
 ```c
 strview stv_removeSuffix(strview stv, strview suffix);
 ```
-若视图以 `suffix` 结尾，则将其移除；否则原样返回。
+若 `stv` 以 `suffix` 结尾（通过 [`stv_endsWith`](#stv_endswith) 判断），则返回去除该后缀后的视图；否则返回原视图。
 
-**参数：**
-- `stv` : 源视图。
-- `suffix` : 要移除的后缀。空后缀视为匹配，返回原视图。
+示例：
+```c
+strview sv = stv_literal("document.txt");
+strview result = stv_removeSuffix(sv, stv_literal(".txt"));
+// result = "document"
+```
 
-**返回值：**
-- 去除后缀后的视图，或原视图（若不匹配）。
+| 参数     | 说明         |
+|----------|--------------|
+| `stv`    | 源视图       |
+| `suffix` | 要移除的后缀 |
+
+| 返回 | 说明                     |
+|------|--------------------------|
+| 视图 | 去除后缀后的视图或原视图 |
+
+### `stv_removeSuffixNocase`
+```c
+strview stv_removeSuffixNocase(strview stv, strview suffix);
+```
+同 [`stv_removeSuffix`](#stv_removesuffix)，但后缀匹配忽略大小写（通过 [`stv_endsWithNocase`](#stv_endswithnocase) 判断）。
+
+示例：
+```c
+strview sv = stv_literal("document.txt");
+strview result = stv_removeSuffixNocase(sv, stv_literal(".TXT"));
+// result = "document"
+```
+
+| 参数     | 说明         |
+|----------|--------------|
+| `stv`    | 源视图       |
+| `suffix` | 要移除的后缀 |
+
+| 返回 | 说明                     |
+|------|--------------------------|
+| 视图 | 去除后缀后的视图或原视图 |
 
 ---
 
 ## 分割
 
-### stv_split
+### `stv_split`
 ```c
-strview stv_split(strview stv, strview sep, strview* remaining);
+strview stv_split(strview stv, strview sep, bool nocase, strview* remaining);
 ```
-在分隔符首次出现处分割。返回分隔符之前的部分，剩余部分存入 `*remaining`（若非 `NULL`）。
+找到第一个分隔符 `sep`，返回其前的部分，并通过 `remaining` 输出剩余部分（不含 `sep`）。
 
-**参数：**
-- `stv` : 待分割的视图。
-- `sep` : 分隔符视图。若为空，则按字符逐个分割（返回第一个字符，剩余部分存入 `*remaining`）。
-- `remaining` : 可选的输出指针，用于接收分隔符之后的部分。若为 `NULL`，则丢弃剩余部分。
+若未找到，返回完整视图且 `*remaining` 为空视图。
 
-**返回值：**
-- 分隔符之前的部分，若未找到分隔符则返回整个视图。
+若 `sep` 为空视图，则按字符分割。
 
-**详情：**
-- 当 `stv` 为空时，返回空视图且不修改 `*remaining`。
+示例：
+```c
+strview rem;
+strview first = stv_split(stv_literal("hello world"), stv_literal(" "), false, &rem);
+// first = "hello", rem = "world"
+```
 
-### stv_splitLines
+| 参数        | 说明                                         |
+|-------------|----------------------------------------------|
+| `stv`       | 待分割视图                                   |
+| `sep`       | 分隔符视图（为空则按字符分割）               |
+| `nocase`    | 是否忽略大小写                               |
+| `remaining` | 输出参数，接收分隔符后的剩余视图（可为 NULL）|
+
+| 返回 | 说明           |
+|------|----------------|
+| 视图 | 分隔符前的部分 |
+
+### `stv_splitLines`
 ```c
 strview stv_splitLines(strview stv, strview* remaining);
 ```
-在首个换行符处分割（支持 CR、LF 或 CRLF）。返回的行不包含换行符。
+按行分割，支持 LF、CR、CRLF。返回第一行（不含换行符），`remaining` 接收剩余内容。
 
-**参数：**
-- `stv` : 待分割的视图。
-- `remaining` : 可选的输出指针，用于接收换行符之后的部分。若为 `NULL`，则丢弃。
+示例：
+```c
+strview line, rest;
+line = stv_splitLines(stv_literal("hello\r\nworld"), &rest);
+// line = "hello", rest = "world"
+```
 
-**返回值：**
-- 当前行，若无换行符则返回整个视图。
+| 参数        | 说明                     |
+|-------------|--------------------------|
+| `stv`       | 待分割视图               |
+| `remaining` | 输出剩余部分（可为 NULL）|
 
-**详情：**
-- 若 `stv` 为空，返回空视图且不修改 `*remaining`。
-- 支持将 Windows 风格的 CRLF 视为单个换行符。
+| 返回   | 说明                               |
+|--------|------------------------------------|
+| 第一行 | 不含换行符；若无换行符返回整个视图 |
 
-### stv_splitWords
+### `stv_splitWords`
 ```c
 strview stv_splitWords(strview stv, strview* remaining);
 ```
-跳过前导空白字符，然后提取下一个连续的非空白字符序列作为单词。
+跳过空白，提取下一个连续非空白单词。剩余内容通过 `remaining` 输出。
 
-**参数：**
-- `stv` : 待分割的视图。
-- `remaining` : 可选的输出指针，用于接收单词之后的部分。若为 `NULL`，则丢弃。
+若无单词，返回空视图且 `*remaining` 为空视图。
 
-**返回值：**
-- 当前单词，若未找到单词（空视图或全为空白）则返回空视图。
+> 空白符定义见 [`stv_whitespace`](#stv_whitespace宏)。
 
-**详情：**
-- 空白字符定义见 [`stv_whitespace`](#stv_whitespace)。
-- 当 `stv` 为空时，不修改 `*remaining`。
-
-### stv_beforeDelim
+示例：
 ```c
-strview stv_beforeDelim(strview stv, strview delim);
+strview rem;
+strview word = stv_splitWords(stv_literal("  hello world  "), &rem);
+// word = "hello", rem = " world  "
 ```
-返回分隔符首次出现之前的部分。
 
-**参数：**
-- `stv` : 待检查的视图。
-- `delim` : 分隔符视图。若为空，返回空视图。
+| 参数        | 说明                     |
+|-------------|--------------------------|
+| `stv`       | 待分割视图               |
+| `remaining` | 输出剩余部分（可为 NULL）|
 
-**返回值：**
-- 分隔符之前的部分；若未找到分隔符则返回整个视图；若 `delim` 为空则返回空视图。
+| 返回     | 说明                           |
+|----------|--------------------------------|
+| 首个单词 | 无空白序列；若无单词返回空视图 |
 
-### stv_afterDelim
+### `stv_beforeFirstDelim`
 ```c
-strview stv_afterDelim(strview stv, strview delim);
+strview stv_beforeFirstDelim(strview stv, strview delim);
 ```
-返回分隔符首次出现之后的部分。
+返回第一个 `delim` 之前的部分；若 `delim` 为空则返回空视图；若未找到则返回原视图。
 
-**参数：**
-- `stv` : 待检查的视图。
-- `delim` : 分隔符视图。若为空，返回整个视图不变。
+示例：
+```c
+strview base = stv_beforeFirstDelim(stv_literal("key=value"), stv_literal("=")); // "key"
+```
 
-**返回值：**
-- 分隔符之后的部分；若未找到分隔符则返回空视图。
+| 参数    | 说明                          |
+|---------|-------------------------------|
+| `stv`   | 源视图                        |
+| `delim` | 分隔符视图（为空则返回空视图）|
+
+| 返回 | 说明             |
+|------|------------------|
+| 视图 | 分隔符之前的部分 |
+
+### `stv_beforeLastDelim`
+```c
+strview stv_beforeLastDelim(strview stv, strview delim);
+```
+返回最后一个 `delim` 之前的部分；若 `delim` 为空则返回空视图；若未找到则返回原视图。
+
+示例：
+```c
+strview dir = stv_beforeLastDelim(stv_literal("a/b/c"), stv_literal("/")); // "a/b"
+```
+
+| 参数    | 说明                          |
+|---------|-------------------------------|
+| `stv`   | 源视图                        |
+| `delim` | 分隔符视图（为空则返回空视图）|
+
+| 返回 | 说明             |
+|------|------------------|
+| 视图 | 分隔符之前的部分 |
+
+### `stv_afterFirstDelim`
+```c
+strview stv_afterFirstDelim(strview stv, strview delim);
+```
+返回第一个 `delim` 之后的部分；若未找到返回空视图；若 `delim` 为空返回原视图。
+
+示例：
+```c
+strview val = stv_afterFirstDelim(stv_literal("key=value"), stv_literal("=")); // "value"
+```
+
+| 参数    | 说明                          |
+|---------|-------------------------------|
+| `stv`   | 源视图                        |
+| `delim` | 分隔符视图（为空则返回源视图）|
+
+| 返回 | 说明             |
+|------|------------------|
+| 视图 | 分隔符之后的部分 |
+
+### `stv_afterLastDelim`
+```c
+strview stv_afterLastDelim(strview stv, strview delim);
+```
+返回最后一个 `delim` 之后的部分；若未找到返回空视图；若 `delim` 为空返回原视图。
+
+示例：
+```c
+strview file = stv_afterLastDelim(stv_literal("a/b/c"), stv_literal("/")); // "c"
+```
+
+| 参数    | 说明                          |
+|---------|-------------------------------|
+| `stv`   | 源视图                        |
+| `delim` | 分隔符视图（为空则返回源视图）|
+
+| 返回 | 说明             |
+|------|------------------|
+| 视图 | 分隔符之后的部分 |
 
 ---
 
 ## 修剪
 
-### 泛型修剪宏
-
-#### stv_trim
+### `stv_trim`（宏）
 ```c
-#define stv_trim(stv, target) _Generic((target), strview: stv_trimChs, stv_charClassFn: stv_trimIf)((stv), (target))
+#define stv_trim(stv, target) /* ... */
 ```
-根据 `target` 的类型分派到 `stv_trimChs` 或 `stv_trimIf`。  
-若 `target` 为 `strview`，视为字符集；若为 `stv_charClassFn`，则作为分类函数使用。
+移除首尾字符。
 
-#### stv_trimStart
+C11 `_Generic` 宏。根据 `target` 类型分派：
+- `strview` -> [`stv_trimChs`](#stv_trimchs)
+- `stv_charClassFn` -> [`stv_trimIf`](#stv_trimif)
+
+示例：
 ```c
-#define stv_trimStart(stv, target) _Generic((target), strview: stv_trimStartChs, stv_charClassFn: stv_trimStartIf)((stv), (target))
+stv_trim(sv, stv_whitespace);   // 调用 stv_trimChs
+stv_trim(sv, isspace);          // 调用 stv_trimIf
 ```
-分派到 `stv_trimStartChs` 或 `stv_trimStartIf`。仅修剪开头。
 
-#### stv_trimEnd
+### `stv_trimStart`（宏）
 ```c
-#define stv_trimEnd(stv, target) _Generic((target), strview: stv_trimEndChs, stv_charClassFn: stv_trimEndIf)((stv), (target))
+#define stv_trimStart(stv, target) /* ... */
 ```
-分派到 `stv_trimEndChs` 或 `stv_trimEndIf`。仅修剪末尾。
+类似 [`stv_trim`](#stv_trim宏)，但仅修剪首部。
 
-### 基于字符集的修剪
+分派到 [`stv_trimStartChs`](#stv_trimstartchs) 或 [`stv_trimStartIf`](#stv_trimstartif)。
 
-#### stv_trimChs
+### `stv_trimEnd`（宏）
+```c
+#define stv_trimEnd(stv, target) /* ... */
+```
+类似 [`stv_trim`](#stv_trim宏)，但仅修剪尾部。
+
+分派到 [`stv_trimEndChs`](#stv_trimendchs) 或 [`stv_trimEndIf`](#stv_trimendif)。
+
+### `stv_trimChs`
 ```c
 strview stv_trimChs(strview stv, strview charset);
 ```
-从两端移除 `charset` 中出现的所有字符。
+移除首尾所有出现在 `charset` 中的字符，若为空集合（空视图）则不做修剪。
 
-**参数：**
-- `stv` : 源视图。
-- `charset` : 字符集视图。若为空，返回原视图不变。
+示例：
+```c
+strview sv = stv_literal("  hello  ");
+strview trimmed = stv_trimChs(sv, stv_whitespace);
+// trimmed = "hello"
+```
 
-**返回值：**
-- 修剪后的视图。
+| 参数      | 说明             |
+|-----------|------------------|
+| `stv`     | 源视图           |
+| `charset` | 要移除的字符集合 |
 
-#### stv_trimStartChs
+| 返回   | 说明         |
+|--------|--------------|
+| 新视图 | 修剪后的视图 |
+
+### `stv_trimStartChs`
 ```c
 strview stv_trimStartChs(strview stv, strview charset);
 ```
-仅从开头移除 `charset` 中的字符。
+仅移除首部的 `charset` 字符，若为空集合（空视图）则不做修剪。
 
-**参数：**
-- `stv` : 源视图。
-- `charset` : 字符集视图。
+示例：
+```c
+strview sv = stv_literal("  hello  ");
+strview trimmed = stv_trimStartChs(sv, stv_whitespace);
+// trimmed = "hello  "
+```
 
-**返回值：**
-- 修剪后的视图。
+| 参数      | 说明             |
+|-----------|------------------|
+| `stv`     | 源视图           |
+| `charset` | 要移除的字符集合 |
 
-#### stv_trimEndChs
+| 返回   | 说明         |
+|--------|--------------|
+| 新视图 | 修剪后的视图 |
+
+### `stv_trimEndChs`
 ```c
 strview stv_trimEndChs(strview stv, strview charset);
 ```
-仅从末尾移除 `charset` 中的字符。
+仅移除尾部的 `charset` 字符，若为空集合（空视图）则不做修剪。
 
-**参数：**
-- `stv` : 源视图。
-- `charset` : 字符集视图。
+示例：
+```c
+strview sv = stv_literal("  hello  ");
+strview trimmed = stv_trimEndChs(sv, stv_whitespace);
+// trimmed = "  hello"
+```
 
-**返回值：**
-- 修剪后的视图。
+| 参数      | 说明             |
+|-----------|------------------|
+| `stv`     | 源视图           |
+| `charset` | 要移除的字符集合 |
 
-### 基于分类函数的修剪
+| 返回   | 说明         |
+|--------|--------------|
+| 新视图 | 修剪后的视图 |
 
-#### stv_trimIf
+### `stv_trimIf`
 ```c
 strview stv_trimIf(strview stv, stv_charClassFn handle);
 ```
-从两端移除满足分类函数的字符。
+移除首尾所有满足 `handle` 分类函数的字符，若 `handle` 为 NULL 则不做修剪。
 
-**参数：**
-- `stv` : 源视图。
-- `handle` : 分类函数。若为 `NULL`，则不执行修剪。
+> 有关字符分类函数，参见 [`stv_charClassFn`](#stv_charclassfn)
 
-**返回值：**
-- 修剪后的视图。
+示例：
+```c
+strview sv = stv_literal("  text  ");
+strview trimmed = stv_trimIf(sv, isspace);
+// trimmed = "text"
+```
 
-#### stv_trimStartIf
+| 参数     | 说明             |
+|----------|------------------|
+| `stv`    | 源视图           |
+| `handle` | 字符分类函数指针 |
+
+| 返回   | 说明         |
+|--------|--------------|
+| 新视图 | 修剪后的视图 |
+
+### `stv_trimStartIf`
 ```c
 strview stv_trimStartIf(strview stv, stv_charClassFn handle);
 ```
-类似 `stv_trimIf`，但仅修剪开头。
+仅移除首部满足 `handle` 的字符，若 `handle` 为 NULL 则不做修剪。
 
-**参数：**
-- `stv` : 源视图。
-- `handle` : 分类函数。
+> 有关字符分类函数，参见 [`stv_charClassFn`](#stv_charclassfn)
 
-**返回值：**
-- 修剪后的视图。
+示例：
+```c
+strview sv = stv_literal("  text  ");
+strview trimmed = stv_trimStartIf(sv, isspace);
+// trimmed = "text  "
+```
 
-#### stv_trimEndIf
+| 参数     | 说明             |
+|----------|------------------|
+| `stv`    | 源视图           |
+| `handle` | 字符分类函数指针 |
+
+| 返回   | 说明         |
+|--------|--------------|
+| 新视图 | 修剪后的视图 |
+
+### `stv_trimEndIf`
 ```c
 strview stv_trimEndIf(strview stv, stv_charClassFn handle);
 ```
-类似 `stv_trimIf`，但仅修剪末尾。
+仅移除尾部满足 `handle` 的字符，若 `handle` 为 NULL 则不做修剪。
 
-**参数：**
-- `stv` : 源视图。
-- `handle` : 分类函数。
+> 有关字符分类函数，参见 [`stv_charClassFn`](#stv_charclassfn)
 
-**返回值：**
-- 修剪后的视图。
+示例：
+```c
+strview sv = stv_literal("  text  ");
+strview trimmed = stv_trimEndIf(sv, isspace);
+// trimmed = "  text"
+```
+
+| 参数     | 说明             |
+|----------|------------------|
+| `stv`    | 源视图           |
+| `handle` | 字符分类函数指针 |
+
+| 返回   | 说明         |
+|--------|--------------|
+| 新视图 | 修剪后的视图 |
+
+### `stv_whitespace`（宏）
+```c
+#define stv_whitespace stv_literal(" \r\n\t\v\f")
+```
+预定义的空白字符集合视图。用作 [`stv_trimChs`](#stv_trimchs)、[`stv_splitWords`](#stv_splitwords) 等函数的参数。
 
 ---
 
 ## 搜索
 
-### stv_search
+### `stv_firstIndex`（宏）
 ```c
-size_t stv_search(strview stv_text, strview stv_pat);
+#define stv_firstIndex(stv, target, invert) /* ... */
 ```
-在 `stv_text` 中搜索 `stv_pat` 的首次出现。自动选择算法（短模式用朴素算法，否则用 Sunday）。
+查找第一个符合条件的字符索引。
 
-**参数：**
-- `stv_text` : 待搜索文本。
-- `stv_pat` : 要搜索的模式。
+C11 `_Generic` 宏。根据 `target` 类型分派：
+- `char` -> [`stv_firstChar`](#stv_firstchar)
+- `strview` -> [`stv_firstCharset`](#stv_firstcharset)
+- `stv_charClassFn` -> [`stv_firstCharClass`](#stv_firstcharclass)
 
-**返回值：**
-- 首次匹配的起始索引；若模式为空则返回 `0`；未找到返回 [`stv_npos`](#stv_npos)。
-
-### stv_naiveSearch
+示例：
 ```c
-size_t stv_naiveSearch(strview stv_text, strview stv_pat);
+stv_firstIndex(sv, 'a', false);                  // 调用 stv_firstChar
+stv_firstIndex(sv, stv_literal("aeiou"), false); // 调用 stv_firstCharset
+stv_firstIndex(sv, isalpha, false);              // 调用 stv_firstCharClass
 ```
-朴素（暴力）子串搜索。
 
-**参数：**
-- `stv_text` : 待搜索文本。
-- `stv_pat` : 模式。
-
-**返回值：**
-- 首次匹配的起始索引；模式为空返回 `0`；未找到或文本过短返回 `stv_npos`。
-
-### stv_sundaySearch
+### `stv_lastIndex`（宏）
 ```c
-size_t stv_sundaySearch(strview stv_text, strview stv_pat);
+#define stv_lastIndex(stv, target, invert) /* ... */
 ```
-Sunday 算法子串搜索，长模式通常更快。
+类似 [`stv_firstIndex`](#stv_firstindex宏)，但查找最后一个符合条件的字符索引。
 
-**参数：**
-- `stv_text` : 待搜索文本。
-- `stv_pat` : 模式。
+分派到 [`stv_lastChar`](#stv_lastchar)、[`stv_lastCharset`](#stv_lastcharset) 或 [`stv_lastCharClass`](#stv_lastcharclass)。
 
-**返回值：**
-- 首次匹配的起始索引；模式为空返回 `0`；否则未找到返回 `stv_npos`。
-
----
-
-## 逆向搜索
-
-### stv_rev_search
-```c
-size_t stv_rev_search(strview stv_text, strview stv_pat);
-```
-搜索 `stv_pat` 的最后一次出现。自动选择算法。
-
-**参数：**
-- `stv_text` : 待搜索文本。
-- `stv_pat` : 模式。
-
-**返回值：**
-- 最后匹配的起始索引；模式为空返回 `stv_text.len`；未找到返回 `stv_npos`。
-
-### stv_rev_naiveSearch
-```c
-size_t stv_rev_naiveSearch(strview stv_text, strview stv_pat);
-```
-朴素逆向搜索。
-
-**参数：**
-- `stv_text` : 待搜索文本。
-- `stv_pat` : 模式。
-
-**返回值：**
-- 最后匹配的起始索引；模式为空返回 `stv_text.len`；未找到返回 `stv_npos`。
-
-### stv_rev_sundaySearch
-```c
-size_t stv_rev_sundaySearch(strview stv_text, strview stv_pat);
-```
-适用于逆向搜索的 Sunday 算法。
-
-**参数：**
-- `stv_text` : 待搜索文本。
-- `stv_pat` : 模式。
-
-**返回值：**
-- 最后匹配的起始索引；模式为空返回 `stv_text.len`；未找到返回 `stv_npos`。
-
----
-
-## 首尾索引查询
-
-### 泛型宏
-
-#### stv_firstIndex
-```c
-#define stv_firstIndex(stv, target, invert) _Generic((target), char: stv_firstChar, strview: stv_firstCharset, stv_charClassFn: stv_firstCharClass)((stv), (target), (invert))
-```
-根据 `target` 的类型分派到合适的首索引函数。若 `invert` 为 `true`，则查找**不匹配**的首个字符。
-
-#### stv_lastIndex
-```c
-#define stv_lastIndex(stv, target, invert) _Generic((target), char: stv_lastChar, strview: stv_lastCharset, stv_charClassFn: stv_lastCharClass)((stv), (target), (invert))
-```
-分派到合适的尾索引函数。若 `invert` 为 `true`，则查找**不匹配**的最后一个字符。
-
-### 字符查找
-
-#### stv_firstChar
+### `stv_firstChar`
 ```c
 size_t stv_firstChar(strview stv, const char ch, bool invert);
 ```
-查找 `ch` 首次出现的位置（或若 `invert` 为真，则查找首个不等于 `ch` 的位置）。
+查找第一个**等于** `ch` 的字符索引，若未找到则返回 [`stv_npos`](#stv_npos--stv_begin--stv_end宏)。
 
-**参数：**
-- `stv` : 待搜索视图。
-- `ch` : 要定位的字符。
-- `invert` : 若为 `true`，则查找首个**不等于** `ch` 的字符。
+若 `invert` 为 true 则改为查找第一个**不等于** `ch` 的字符索引
 
-**返回值：**
-- 匹配索引，若未找到或视图为空则返回 `stv_npos`。
+示例：
+```c
+strview sv = stv_literal("hello");
+size_t p1 = stv_firstChar(sv, 'l', false); // 2
+size_t p2 = stv_firstChar(sv, 'h', true);  // 1 (第一个不等于 'h' 的字符位置)
+```
 
-#### stv_lastChar
+| 参数     | 说明             |
+|----------|------------------|
+| `stv`    | 源视图           |
+| `ch`     | 要匹配的字符     |
+| `invert` | 是否反转搜索逻辑 |
+
+| 返回 | 说明               |
+|------|--------------------|
+| 索引 | 符合条件的字符下标 |
+
+### `stv_lastChar`
 ```c
 size_t stv_lastChar(strview stv, const char ch, bool invert);
 ```
-查找 `ch` 最后一次出现的位置（或若 `invert` 为真，则查找最后一个不等于 `ch` 的位置）。
+查找最后一个**等于** `ch` 的字符索引，若未找到则返回 [`stv_npos`](#stv_npos--stv_begin--stv_end宏)。
 
-**参数：**
-- `stv` : 待搜索视图。
-- `ch` : 要定位的字符。
-- `invert` : 若为 `true`，则查找最后一个**不等于** `ch` 的字符。
+若 `invert` 为 true 则改为查找最后一个**不等于** `ch` 的字符索引。
 
-**返回值：**
-- 匹配索引，若未找到或视图为空则返回 `stv_npos`。
+示例：
+```c
+strview sv = stv_literal("hello");
+size_t p1 = stv_lastChar(sv, 'l', false); // 3
+size_t p2 = stv_lastChar(sv, 'h', true);  // 4 (最后一个不等于 'h' 的字符位置)
+```
 
-### 字符集查找
+| 参数     | 说明             |
+|----------|------------------|
+| `stv`    | 源视图           |
+| `ch`     | 要匹配的字符     |
+| `invert` | 是否反转搜索逻辑 |
 
-#### stv_firstCharset
+| 返回 | 说明               |
+|------|--------------------|
+| 索引 | 符合条件的字符下标 |
+
+### `stv_firstCharset`
 ```c
 size_t stv_firstCharset(strview stv, strview charset, bool invert);
 ```
-查找首个属于（或若 `invert` 为真则首个不属于）`charset` 的字符。
+查找第一个**属于**字符集 `charset` 的字符索引，若未找到或空 `charset` 则返回 [`stv_npos`](#stv_npos--stv_begin--stv_end宏)。
 
-**参数：**
-- `stv` : 待搜索视图。
-- `charset` : 字符集视图。若为空，始终返回 `stv_npos`。
-- `invert` : 若为 `true`，则查找首个**不在**字符集中的字符。
+若 `invert` 为 true 则改为查找第一个**不属于** `charset` 的字符索引。
 
-**返回值：**
-- 匹配索引，或 `stv_npos`。
+示例：
+```c
+strview sv = stv_literal("abc123");
+size_t p1 = stv_firstCharset(sv, stv_literal("abc"), false); // 0
+size_t p2 = stv_firstCharset(sv, stv_literal("abc"), true);  // 3 (第一个不在 "abc" 中的字符)
+```
 
-#### stv_lastCharset
+| 参数      | 说明             |
+|-----------|------------------|
+| `stv`     | 源视图           |
+| `charset` | 要匹配的字符集   |
+| `invert`  | 是否反转搜索逻辑 |
+
+| 返回 | 说明               |
+|------|--------------------|
+| 索引 | 符合条件的字符下标 |
+
+### `stv_lastCharset`
 ```c
 size_t stv_lastCharset(strview stv, strview charset, bool invert);
 ```
-查找最后一个属于（或不属于）`charset` 的字符。
+查找最后一个**属于**字符集 `charset` 的字符索引，若未找到或空 `charset` 则返回 [`stv_npos`](#stv_npos--stv_begin--stv_end宏)。
 
-**参数：**
-- `stv` : 待搜索视图。
-- `charset` : 字符集视图。
-- `invert` : 若为 `true`，则查找最后一个**不在**字符集中的字符。
+若 `invert` 为 true 则改为查找最后一个**不属于** `charset` 的字符索引。
 
-**返回值：**
-- 匹配索引，或 `stv_npos`。
+示例：
+```c
+strview sv = stv_literal("abc123def456");
+size_t p1 = stv_lastCharset(sv, stv_literal("0123456789"), false); // 11
+size_t p2 = stv_lastCharset(sv, stv_literal("0123456789"), true);  // 8 (最后一个不是数字的字符索引)
+```
 
-### 分类函数查找
+| 参数      | 说明             |
+|-----------|------------------|
+| `stv`     | 源视图           |
+| `charset` | 要匹配的字符集   |
+| `invert`  | 是否反转搜索逻辑 |
 
-#### stv_firstCharClass
+| 返回 | 说明               |
+|------|--------------------|
+| 索引 | 符合条件的字符下标 |
+
+### `stv_firstCharClass`
 ```c
 size_t stv_firstCharClass(strview stv, stv_charClassFn handle, bool invert);
 ```
-查找首个满足 `handle`（或若 `invert` 为真则不满足）的字符。
+查找第一个**满足** `handle` 分类的字符索引，若未找到或 `handle` 为 NULL 则返回 [`stv_npos`](#stv_npos--stv_begin--stv_end宏)。
 
-**参数：**
-- `stv` : 待搜索视图。
-- `handle` : 分类函数。若为 `NULL` 或视图为空，返回 `stv_npos`。
-- `invert` : 若为 `true`，则查找首个**不**满足分类函数的字符。
+若 `invert` 为 true 则改为查找第一个**不满足** `handle` 的字符索引。
 
-**返回值：**
-- 匹配索引，或 `stv_npos`。
+> 有关字符分类函数，参见 [`stv_charClassFn`](#stv_charclassfn)
 
-#### stv_lastCharClass
+示例：
+```c
+strview sv = stv_literal("abc123");
+size_t p1 = stv_firstCharClass(sv, isdigit, false); // 3
+size_t p2 = stv_firstCharClass(sv, isdigit, true);  // 0 (第一个不是数字的字符)
+```
+| 参数     | 说明             |
+|----------|------------------|
+| `stv`    | 源视图           |
+| `handle` | 字符分类函数指针 |
+| `invert` | 是否反转搜索逻辑 |
+
+| 返回 | 说明               |
+|------|--------------------|
+| 索引 | 符合条件的字符下标 |
+
+### `stv_lastCharClass`
 ```c
 size_t stv_lastCharClass(strview stv, stv_charClassFn handle, bool invert);
 ```
-查找最后一个满足 `handle`（或不满足）的字符。
+查找最后一个**满足** `handle` 分类的字符索引，若未找到或 `handle` 为 NULL 则返回 [`stv_npos`](#stv_npos--stv_begin--stv_end宏)。
 
-**参数：**
-- `stv` : 待搜索视图。
-- `handle` : 分类函数。
-- `invert` : 若为 `true`，则查找最后一个**不**满足的字符。
+若 `invert` 为 true 则改为查找最后一个**不满足** `handle` 的字符索引。
 
-**返回值：**
-- 匹配索引，或 `stv_npos`。
+> 有关字符分类函数，参见 [`stv_charClassFn`](#stv_charclassfn)
+
+示例：
+```c
+strview sv = stv_literal("123abc456");
+size_t p1 = stv_lastCharClass(sv, isdigit, false); // 8
+size_t p2 = stv_lastCharClass(sv, isdigit, true);  // 5 (最后一个不是数字的字符索引)
+```
+
+| 参数     | 说明             |
+|----------|------------------|
+| `stv`    | 源视图           |
+| `handle` | 字符分类函数指针 |
+| `invert` | 是否反转搜索逻辑 |
+
+| 返回 | 说明               |
+|------|--------------------|
+| 索引 | 符合条件的字符下标 |
+
+### `stv_search`
+```c
+size_t stv_search(strview stv_text, strview stv_pat, bool nocase);
+```
+正向搜索，在 `stv_text` 中查找第一次出现 `stv_pat` 的位置，若 `stv_pat` 为空视图则返回 `0`，  
+若未找到则返回 [`stv_npos`](#stv_npos--stv_begin--stv_end宏)。
+
+对于 `stv_pat`，`len > 4` 时使用 [`stv_sundaySearch`](#stv_sundaysearch)，否则使用 [`stv_naiveSearch`](#stv_naivesearch)。
+
+示例：
+```c
+strview text = stv_literal("hello world");
+size_t pos = stv_search(text, stv_literal("world"), false); // 6
+```
+
+| 参数       | 说明           |
+|------------|----------------|
+| `stv_text` | 文本视图       |
+| `stv_pat`  | 模式视图       |
+| `nocase`   | 是否忽略大小写 |
+
+| 返回 | 说明                     |
+|------|--------------------------|
+| 索引 | 模式第一次出现的起始位置 |
+
+### `stv_naiveSearch`
+```c
+size_t stv_naiveSearch(strview stv_text, strview stv_pat, bool nocase);
+```
+朴素字符串搜索算法，适用于短模式。参数和返回值同 [`stv_search`](#stv_search)。
+
+### `stv_sundaySearch`
+```c
+size_t stv_sundaySearch(strview stv_text, strview stv_pat, bool nocase);
+```
+Sunday 算法搜索，适用于较长模式。参数和返回值同 [`stv_search`](#stv_search)。
+
+### `stv_rev_search`
+```c
+size_t stv_rev_search(strview stv_text, strview stv_pat, bool nocase);
+```
+反向搜索，在 `stv_text` 中查找最后一次出现 `stv_pat` 的位置，若 `stv_pat` 为空视图则返回 `stv_text.len`，  
+若未找到则返回 [`stv_npos`](#stv_npos--stv_begin--stv_end宏)。
+
+对于 `stv_pat`，`len > 4` 时使用 [`stv_rev_sundaySearch`](#stv_rev_sundaysearch)，否则使用 [`stv_rev_naiveSearch`](#stv_rev_naivesearch)。
+
+示例：
+```c
+strview text = stv_literal("hello world hello");
+size_t pos = stv_rev_search(text, stv_literal("hello"), false); // 12
+```
+
+| 参数       | 说明           |
+|------------|----------------|
+| `stv_text` | 文本视图       |
+| `stv_pat`  | 模式视图       |
+| `nocase`   | 是否忽略大小写 |
+
+| 返回 | 说明                       |
+|------|----------------------------|
+| 索引 | 模式最后一次出现的起始位置 |
+
+### `stv_rev_naiveSearch`
+```c
+size_t stv_rev_naiveSearch(strview stv_text, strview stv_pat, bool nocase);
+```
+反向朴素搜索，参数和返回值同 [`stv_rev_search`](#stv_rev_search)。
+
+### `stv_rev_sundaySearch`
+```c
+size_t stv_rev_sundaySearch(strview stv_text, strview stv_pat, bool nocase);
+```
+反向 Sunday 搜索，参数和返回值同 [`stv_rev_search`](#stv_rev_search)。
 
 ---
 
-## 差异检测
+## 比较
 
-### stv_firstDiff
+### `stv_firstDiff`
 ```c
-size_t stv_firstDiff(strview stv_left, strview stv_right);
+size_t stv_firstDiff(strview stv_left, strview stv_right, bool nocase);
 ```
-找出两个视图首个不同的字节位置（从左到右）。
+查找两个视图第一个不同字节的位置，若未找到（两个视图完全相同）则返回 [`stv_npos`](#stv_npos--stv_begin--stv_end宏)。
 
-**参数：**
-- `stv_left` : 左视图。
-- `stv_right` : 右视图。
+若一个视图是另一个的前缀，返回较短视图的长度。
 
-**返回值：**
-- 首个差异索引；若完全相同则返回 `stv_npos`。
-
-**详情：**
-- 若一者是另一者的前缀，返回较短视图的长度。
-- 若一者为空而另一者非空，返回 `0`。
-
-### stv_lastDiff
+示例：
 ```c
-size_t stv_lastDiff(strview stv_left, strview stv_right);
+size_t pos = stv_firstDiff(stv_literal("abc"), stv_literal("abx"), false); // 2
 ```
-找出两个视图最后一个不同的字节位置（从右到左）。
 
-**参数：**
-- `stv_left` : 左视图。
-- `stv_right` : 右视图。
+| 参数        | 说明           |
+|-------------|----------------|
+| `stv_left`  | 第一个视图     |
+| `stv_right` | 第二个视图     |
+| `nocase`    | 是否忽略大小写 |
 
-**返回值：**
-- 最后一个差异（从开头算起）的索引；若完全相同则返回 `stv_npos`。
+| 返回 | 说明           |
+|------|----------------|
+| 索引 | 不同的位置索引 |
 
----
-
-## 计数
-
-### 泛型宏
-
-#### stv_count
+### `stv_lastDiff`
 ```c
-#define stv_count(stv, target) _Generic((target), char: stv_countChar, strview: stv_countSubstr, stv_charClassFn: stv_countIf)((stv), (target))
+size_t stv_lastDiff(strview stv_left, strview stv_right, bool nocase);
 ```
-根据 `target` 的类型分派到适当的计数函数。
+查找两个视图最后一个不同字节位置，若未找到（两个视图完全相同）则返回 [`stv_npos`](#stv_npos--stv_begin--stv_end宏)。
 
-### stv_countIf
+若一个视图是另一个的后缀，则返回从右边开始第一个不同字节的索引。
+
+示例：
 ```c
-size_t stv_countIf(strview stv, stv_charClassFn handle);
+size_t pos = stv_lastDiff(stv_literal("hello"), stv_literal("hella"), false); // 4
 ```
-统计满足分类函数的字符个数。
 
-**参数：**
-- `stv` : 待检查视图。
-- `handle` : 分类函数。若为 `NULL` 或视图为空，返回 `stv_npos`。
+| 参数        | 说明           |
+|-------------|----------------|
+| `stv_left`  | 第一个视图     |
+| `stv_right` | 第二个视图     |
+| `nocase`    | 是否忽略大小写 |
 
-**返回值：**
-- 匹配的字符数，或 `stv_npos`。
+| 返回 | 说明                                |
+|------|-------------------------------------|
+| 索引 | 不同的位置索引（以较长的视图为基准）|
 
-### stv_countChar
-```c
-size_t stv_countChar(strview stv, const char ch);
-```
-统计特定字符的出现次数。
-
-**参数：**
-- `stv` : 待检查视图。
-- `ch` : 要计数的字符。
-
-**返回值：**
-- 出现次数；若视图为空返回 `stv_npos`。
-
-### stv_countSubstr
-```c
-size_t stv_countSubstr(strview stv, strview sub);
-```
-统计子串的不重叠出现次数。
-
-**参数：**
-- `stv` : 待搜索视图。
-- `sub` : 要计数的子串。若为空，返回 `stv.len`。
-
-**返回值：**
-- 不重叠出现次数；若 `stv` 为空返回 `stv_npos`。
-
----
-
-## 谓词判断
-
-### 泛型宏
-
-#### stv_every
-```c
-#define stv_every(stv, target) _Generic((target), char: stv_everyChar, stv_charClassFn: stv_everyIf)((stv), (target))
-```
-分派到 `stv_everyChar` 或 `stv_everyIf`。若所有字符均满足条件，返回 `true`。
-
-#### stv_some
-```c
-#define stv_some(stv, target) _Generic((target), char: stv_someChar, stv_charClassFn: stv_someIf)((stv), (target))
-```
-分派到 `stv_someChar` 或 `stv_someIf`。若至少有一个字符满足条件，返回 `true`。
-
-### stv_everyIf
-```c
-bool stv_everyIf(strview stv, stv_charClassFn handle);
-```
-检查所有字符是否都满足分类函数。
-
-**参数：**
-- `stv` : 待检查视图。
-- `handle` : 分类函数。若为 `NULL` 或视图为空，返回 `false`。
-
-**返回值：**
-- 若所有字符均匹配则返回 `true`；否则返回 `false`。
-
-### stv_everyChar
-```c
-bool stv_everyChar(strview stv, const char ch);
-```
-检查所有字符是否都等于给定字符。
-
-**参数：**
-- `stv` : 待检查视图。
-- `ch` : 要比较的字符。
-
-**返回值：**
-- 若非空且所有字符均等于 `ch` 则返回 `true`；否则返回 `false`。
-
-### stv_someIf
-```c
-bool stv_someIf(strview stv, stv_charClassFn handle);
-```
-检查是否至少有一个字符满足分类函数。
-
-**参数：**
-- `stv` : 待检查视图。
-- `handle` : 分类函数。若为 `NULL` 或视图为空，返回 `false`。
-
-**返回值：**
-- 若有任何字符匹配则返回 `true`；否则返回 `false`。
-
-### stv_someChar
-```c
-bool stv_someChar(strview stv, const char ch);
-```
-检查给定字符是否至少出现一次。
-
-**参数：**
-- `stv` : 待检查视图。
-- `ch` : 要查找的字符。
-
-**返回值：**
-- 若非空且包含 `ch` 则返回 `true`；否则返回 `false`。
-
----
-
-## 比较与检查
-
-### stv_compare
+### `stv_compare`
 ```c
 int stv_compare(strview stv_left, strview stv_right);
 ```
-字典序比较两个视图。
+按字典序比较两个视图。
 
-**参数：**
-- `stv_left` : 左视图。
-- `stv_right` : 右视图。
-
-**返回值：**
-- 若左 < 右则返回负值，相等返回零，左 > 右返回正值。
-
-### stv_equal
+示例：
 ```c
-bool stv_equal(strview stv_left, strview stv_right);
+int res = stv_compare(stv_literal("abc"), stv_literal("abd")); // < 0
 ```
-逐字节内容相等判断。
 
-**参数：**
-- `stv_left` : 左视图。
-- `stv_right` : 右视图。
+| 返回 | 说明             |
+|------|------------------|
+| 负值 | `left` < `right` |
+| 0    | 相等             |
+| 正值 | `left` > `right` |
 
-**返回值：**
-- 若内容相同返回 `true`；否则返回 `false`。
-
-### stv_same
+### `stv_compareNocase`
 ```c
-bool stv_same(strview stv_left, strview stv_right);
+int stv_compareNocase(strview stv_left, strview stv_right);
 ```
-检查两个视图是否引用完全相同的存储区域（相同的指针和长度）。
+忽略大小写的字典序比较。参数与返回值规则同 [`stv_compare`](#stv_compare)。
 
-**参数：**
-- `stv_left` : 左视图。
-- `stv_right` : 右视图。
+示例：
+```c
+int res = stv_compareNocase(stv_literal("abc"), stv_literal("ABC")); // 0
+```
 
-**返回值：**
-- 若 `data` 和 `len` 均相等返回 `true`；否则返回 `false`。
-
-### stv_startsWith
+### `stv_startsWith`
 ```c
 bool stv_startsWith(strview stv_text, strview stv_pat);
 ```
-检查 `stv_text` 是否以 `stv_pat` 开头。
+判断 `stv_text` 是否以 `stv_pat` 开头。空模式始终返回 true。
 
-**参数：**
-- `stv_text` : 待检查文本。
-- `stv_pat` : 前缀模式。空模式始终返回 `true`。
+示例：
+```c
+bool starts = stv_startsWith(stv_literal("hello world"), stv_literal("hello")); // true
+```
 
-**返回值：**
-- 若文本以模式开头返回 `true`；否则返回 `false`。
+| 返回  | 说明           |
+|-------|----------------|
+| true  | 以该前缀开头   |
+| false | 不以该前缀开头 |
 
-### stv_endsWith
+### `stv_startsWithNocase`
+```c
+bool stv_startsWithNocase(strview stv_text, strview stv_pat);
+```
+忽略大小写的前缀判断。参数与返回值规则同 [`stv_startsWith`](#stv_startswith)。
+
+示例：
+```c
+bool starts = stv_startsWithNocase(stv_literal("Hello"), stv_literal("hello")); // true
+```
+
+### `stv_endsWith`
 ```c
 bool stv_endsWith(strview stv_text, strview stv_pat);
 ```
-检查 `stv_text` 是否以 `stv_pat` 结尾。
+判断 `stv_text` 是否以 `stv_pat` 结尾。空模式始终返回 true。
 
-**参数：**
-- `stv_text` : 待检查文本。
-- `stv_pat` : 后缀模式。空模式始终返回 `true`。
+示例：
+```c
+bool ends = stv_endsWith(stv_literal("document.txt"), stv_literal(".txt")); // true
+```
 
-**返回值：**
-- 若文本以模式结尾返回 `true`；否则返回 `false`。
+| 返回  | 说明           |
+|-------|----------------|
+| true  | 以该后缀结尾   |
+| false | 不以该后缀结尾 |
 
-### stv_contains
+### `stv_endsWithNocase`
+```c
+bool stv_endsWithNocase(strview stv_text, strview stv_pat);
+```
+忽略大小写的后缀判断。参数与返回值规则同 [`stv_endsWith`](#stv_endswith)。
+
+示例：
+```c
+bool ends = stv_endsWithNocase(stv_literal("FILE.TXT"), stv_literal(".txt")); // true
+```
+
+### `stv_contains`
 ```c
 bool stv_contains(strview stv_text, strview stv_sub);
 ```
-检查 `stv_text` 是否包含 `stv_sub`。
+判断 `stv_sub` 是否在 `stv_text` 中出现。空模式视为包含。内部调用 [`stv_search`](#stv_search)。
 
-**参数：**
-- `stv_text` : 待检查文本。
-- `stv_sub` : 要查找的子串。空子串视为包含。
+示例：
+```c
+bool found = stv_contains(stv_literal("hello world"), stv_literal("lo wo")); // true
+```
 
-**返回值：**
-- 若模式出现返回 `true`；否则返回 `false`。
+| 返回  | 说明      |
+|-------|-----------|
+| true  | 包含子串  |
+| false | 不包含    |
 
-### stv_empty
+### `stv_containsNocase`
+```c
+bool stv_containsNocase(strview stv_text, strview stv_sub);
+```
+忽略大小写的字串判断。参数与返回值规则同 [`stv_contains`](#stv_contains)。
+
+示例：
+```c
+bool found = stv_containsNocase(stv_literal("Hello World"), stv_literal("world")); // true
+```
+
+### `stv_equal`
+```c
+bool stv_equal(strview stv_left, strview stv_right);
+```
+比较两个视图内容是否完全一致。内部调用 [`stv_firstDiff`](#stv_firstdiff)。
+
+示例：
+```c
+bool eq = stv_equal(stv_literal("hello"), stv_literal("hello")); // true
+```
+
+| 返回  | 说明     |
+|-------|----------|
+| true  | 内容相等 |
+| false | 内容不同 |
+
+### `stv_equalNocase`
+```c
+bool stv_equalNocase(strview stv_left, strview stv_right);
+```
+忽略大小写的内容相等判断。内部调用 [`stv_firstDiff`](#stv_firstdiff) 并开启 nocase。返回值规则同 [`stv_equal`](#stv_equal)。
+
+示例：
+```c
+bool eq = stv_equalNocase(stv_literal("ABC"), stv_literal("abc")); // true
+```
+
+### `stv_same`
+```c
+bool stv_same(strview stv_left, strview stv_right);
+```
+判断两个视图是否引用完全相同的底层数据（指针相同且长度相同）。
+
+示例：
+```c
+char buf[] = "data";
+strview a = stv_makestv(buf, 4);
+strview b = stv_makestv(buf, 4);
+bool same = stv_same(a, b); // true
+```
+
+| 返回  | 说明       |
+|-------|------------|
+| true  | 同一块数据 |
+| false | 不同数据   |
+
+### `stv_empty`
 ```c
 bool stv_empty(strview stv);
 ```
-检查视图是否为空。
+判断视图是否为空（`data == NULL` 或 `len == 0`）。
 
-**参数：**
-- `stv` : 待检查视图。
+示例：
+```c
+bool empty = stv_empty(stv_nullstv); // true
+```
 
-**返回值：**
-- 若 `data` 为 `NULL` 或 `len` 为 `0` 返回 `true`；否则返回 `false`。
+| 返回  | 说明 |
+|-------|------|
+| true  | 为空 |
+| false | 非空 |
 
 ---
 
-## 工具方法
+## 计数 / 谓词
 
-### stv_front
+### `stv_count`（宏）
+```c
+#define stv_count(stv, target) /* ... */
+```
+统计满足条件的字符（或子串）数量。
+
+C11 `_Generic` 宏。根据 `target` 类型分派：
+- `stv_charClassFn` -> [`stv_countIf`](#stv_countif)
+- `char` -> [`stv_countChar`](#stv_countchar)
+- `strview` -> [`stv_countSubstr`](#stv_countsubstr)
+
+示例：
+```c
+size_t n = stv_count(stv_literal("hello"), 'l'); // 2
+size_t m = stv_count(stv_literal("ababa"), stv_literal("aba")); // 1
+```
+
+### `stv_countIf`
+```c
+size_t stv_countIf(strview stv, stv_charClassFn handle);
+```
+统计满足 `handle` 分类函数的字符数量，若视图为空或 `handle` 为 NULL 则返回 [`stv_npos`](#stv_npos--stv_begin--stv_end宏)。
+
+> 有关字符分类函数，参见 [`stv_charClassFn`](#stv_charclassfn)
+
+示例：
+```c
+size_t digits = stv_countIf(stv_literal("abc123"), isdigit); // 3
+```
+
+### `stv_countChar`
+```c
+size_t stv_countChar(strview stv, const char ch);
+```
+统计字符 `ch` 的出现次数，若视图为空则返回 [`stv_npos`](#stv_npos--stv_begin--stv_end宏)。
+
+示例：
+```c
+size_t cnt = stv_countChar(stv_literal("hello"), 'l'); // 2
+```
+
+### `stv_countSubstr`
+```c
+size_t stv_countSubstr(strview stv, strview sub);
+```
+统计非重叠子串 `sub` 的出现次数，若视图为空返回 [`stv_npos`](#stv_npos--stv_begin--stv_end宏)。
+
+若 `sub` 为空视图返回 `stv.len`。
+
+示例：
+```c
+size_t cnt = stv_countSubstr(stv_literal("abcabcdeabcabed"), stv_literal("abc")); // 3
+```
+
+### `stv_every`（宏）
+```c
+#define stv_every(stv, target) /* ... */
+```
+检查是否所有字符都满足条件。
+
+C11 `_Generic` 宏。根据 `target` 类型分派：
+- `stv_charClassFn` -> [`stv_everyIf`](#stv_everyif)
+- `char` -> [`stv_everyChar`](#stv_everychar) 
+
+示例：
+```c
+bool all_a = stv_every(stv_literal("aaa"), 'a'); // true
+```
+
+### `stv_everyIf`
+```c
+bool stv_everyIf(strview stv, stv_charClassFn handle);
+```
+检查是否所有字符都满足分类函数，若视图为空或 `handle` 为 NULL 则返回 false。内部调用 [`stv_countIf`](#stv_countif)。
+
+示例：
+```c
+bool all_digits = stv_everyIf(stv_literal("12345"), isdigit); // true
+```
+
+### `stv_everyChar`
+```c
+bool stv_everyChar(strview stv, const char ch);
+```
+检查是否所有字符都等于 `ch`，若视图为空返回 false。内部调用 [`stv_countChar`](#stv_countchar)。
+
+示例：
+```c
+bool all_a = stv_everyChar(stv_literal("aaaa"), 'a'); // true
+```
+
+### `stv_some`（宏）
+```c
+#define stv_some(stv, target) /* ... */
+```
+检查是否有任意字符满足条件。
+
+C11 `_Generic` 宏。根据 `target` 类型分派：
+- `stv_charClassFn` -> [`stv_someIf`](#stv_someif)。
+- `char` -> [`stv_someChar`](#stv_somechar)
+
+示例：
+```c
+bool has_digit = stv_some(stv_literal("abc1"), isdigit); // true
+```
+
+### `stv_someIf`
+```c
+bool stv_someIf(strview stv, stv_charClassFn handle);
+```
+检查是否有任意字符满足分类函数，若视图为空或 `handle` 为 NULL 则返回 false。内部调用 [`stv_countIf`](#stv_countif)。
+
+示例：
+```c
+bool has_digit = stv_someIf(stv_literal("abc1"), isdigit); // true
+```
+
+### `stv_someChar`
+```c
+bool stv_someChar(strview stv, const char ch);
+```
+检查是否有任意字符等于 `ch`，若视图为空返回 false。内部调用 [`stv_countChar`](#stv_countchar)。
+
+示例：
+```c
+bool has_e = stv_someChar(stv_literal("hello"), 'e'); // true
+```
+
+---
+
+## 工具函数
+
+### `stv_front`
 ```c
 char stv_front(strview stv);
 ```
-获取首个字符。
+返回第一个字符；空视图返回 `'\0'`。
 
-**参数：**
-- `stv` : 待检查视图。
+示例：
+```c
+char c = stv_front(stv_literal("Hello")); // 'H'
+```
 
-**返回值：**
-- 首个字符，若视图为空返回 `'\0'`。
-
-### stv_back
+### `stv_back`
 ```c
 char stv_back(strview stv);
 ```
-获取最后一个字符。
+返回最后一个字符；空视图返回 `'\0'`。
 
-**参数：**
-- `stv` : 待检查视图。
+示例：
+```c
+char c = stv_back(stv_literal("Hello")); // 'o'
+```
 
-**返回值：**
-- 最后一个字符，若视图为空返回 `'\0'`。
-
-### stv_at
+### `stv_at`
 ```c
 char stv_at(strview stv, size_t idx);
 ```
-访问指定索引处的字符。
+返回索引 `idx` 处的字符；越界或空视图返回 `'\0'`。
 
-**参数：**
-- `stv` : 待检查视图。
-- `idx` : 从零开始的索引。
+示例：
+```c
+char c = stv_at(stv_literal("Hello"), 1); // 'e'
+```
 
-**返回值：**
-- `idx` 处的字符，若越界或视图为空返回 `'\0'`。
-
-### stv_forEach
+### `stv_forEach`
 ```c
 void stv_forEach(strview stv, stv_forEachFn callback);
 ```
-遍历视图中的每个字符。回调接收字符、其索引以及作为上下文的原始视图。若视图为空，则不会调用回调。
+遍历视图中的每个字符，调用 `callback`。空视图或 NULL 回调时不执行。
 
-**参数：**
-- `stv` : 要遍历的视图。
-- `callback` : 类型为 [`stv_forEachFn`](#stv_foreachfn) 的回调。
+> 回调函数指针类型定义查看 [`stv_forEachFn`](#stv_foreachfn)
 
-**返回值：**
-- 无。
+示例：
+```c
+void print(char ch, size_t idx, strview ctx) {
+  printf("%c", ch);
+}
+stv_forEach(stv_literal("abc"), print); // 输出 "abc"
+```
 
-### stv_swap
+### `stv_forEachRev`
+```c
+void stv_forEachRev(strview stv, stv_forEachFn callback);
+```
+反向遍历，参数和用法同 [`stv_forEach`](#stv_foreach)。
+
+> 回调函数指针类型定义查看 [`stv_forEachFn`](#stv_foreachfn)
+
+示例：
+```c
+stv_forEachRev(stv_literal("abc"), print); // 输出 "cba"
+```
+
+### `stv_swap`
 ```c
 void stv_swap(strview* stv_left, strview* stv_right);
 ```
-交换两个视图的内容。
+交换两个视图的内容。任一指针为 NULL 则无操作。
 
-**参数：**
-- `stv_left` : 第一个视图的指针。
-- `stv_right` : 第二个视图的指针。若任一为 `NULL`，则无操作。
+示例：
+```c
+strview a = stv_literal("first");
+strview b = stv_literal("second");
+stv_swap(&a, &b);
+// a = "second", b = "first"
+```
 
-**返回值：**
-- 无。
-
-### stv_hash
+### `stv_hash`
 ```c
 size_t stv_hash(strview stv);
 ```
-计算视图内容的哈希值。
+计算哈希值，默认使用 FNV-1a 算法（调用 [`stv_hash_FNV1a`](#stv_hash_fnv1a)）。空视图返回 0。
 
-**参数：**
-- `stv` : 要哈希的视图。
+示例：
+```c
+size_t h = stv_hash(stv_literal("hello"));
+```
 
-**返回值：**
-- 哈希值；若视图为空则返回 `0`。
-
-### stv_hash_FNV1a
+### `stv_hash_FNV1a`
 ```c
 size_t stv_hash_FNV1a(strview stv);
 ```
-直接的 FNV‑1a 哈希实现。根据 `size_t` 宽度选择 16/32/64 位参数。
+FNV-1a 哈希，根据 `SIZE_MAX` 选择 16/32/64 位变体。平台不支持时返回 0。
 
-**参数：**
-- `stv` : 要哈希的视图。
+示例：
+```c
+size_t h = stv_hash_FNV1a(stv_literal("hello"));
+```
 
-**返回值：**
-- 哈希值；若视图为空或不支持的平台宽度返回 `0`。
+### `stv_PFARG / stv_PFFMT`（宏）
+```c
+#define stv_PFARG(stv) \
+    (int)(stv_empty(stv) ? 0 : (stv).len > INT_MAX ? INT_MAX : (stv).len), (stv_empty(stv) ? "" : (stv).data)
+#define stv_PFFMT "%.*s"
+```
+用于 `printf` 格式化视图。`stv_PFARG` 产生长度和指针参数，配合 `stv_PFFMT` 使用。长度超过 `INT_MAX` 时截断。
 
-### stv_cstr
+示例：
+```c
+printf("[" stv_PFFMT "]\n", stv_PFARG(myview));
+```
+
+### `stv_LIST`（宏）
+```c
+#define stv_LIST(...) ((strview[]){__VA_ARGS__}), (sizeof((strview[]){__VA_ARGS__}) / sizeof(strview))
+```
+创建视图数组并计算元素个数，用于 [`stv_opt_join`](#stv_opt_join)。
+
+示例：
+```c
+strview sv1 = stv_literal("a"), sv2 = stv_literal("b");
+stv_opt_join(stv_LIST(sv1, sv2), buf, sizeof(buf), sep, opts);
+```
+
+### `stv_npos / stv_begin / stv_end`（宏）
+```c
+#define stv_npos ((size_t)-1)   // 表示“未找到”
+#define stv_begin (0)           // 起始索引 0
+#define stv_end (stv_npos)      // 表示切片到末尾
+```
+
+---
+
+## C 字符串转换
+
+### `stv_cstr`
 ```c
 char* stv_cstr(strview stv, char* mem, size_t size);
 ```
-将视图内容复制到缓冲区并追加空终止符。
+字符串输出。将视图内容写入到 `mem` 并附加空字符，缓冲区可用空间必须至少为 `stv.len + 1` 字节。
 
-**参数：**
-- `stv` : 源视图。
-- `mem` : 目标缓冲区。
-- `size` : 缓冲区字节大小。
+示例：
+```c
+char buf[6];
+strview sv = stv_literal("   Hello   ");
+stv_cstr(stv_trimChs(sv, stv_whitespace), buf, sizeof(buf));
+// buf = "Hello"
+```
 
-**返回值：**
-- 若缓冲区足够大（`size > stv.len`）返回 `mem`；否则返回 `NULL`。视图为空时写入空字符串。
+| 参数   | 说明                     |
+|--------|--------------------------|
+| `stv`  | 源视图                   |
+| `mem`  | 目标缓冲区（不能为 NULL）|
+| `size` | 缓冲区大小（字节）       |
 
-### stv_opt_cstr
+| 返回  | 说明                                     |
+|-------|------------------------------------------|
+| `mem` | 若缓冲区不足或 `mem` 为 NULL 则返回 NULL |
+
+### `stv_opt_cstr`
 ```c
 char* stv_opt_cstr(strview stv, char* mem, size_t size, stv_cstrOptions opts);
 ```
-复制视图内容并可选择应用转换（大小写、反转）。
+带转换选项的字符串输出。将视图内容写入到 `mem` 并附加空字符，缓冲区可用空间必须至少为 `stv.len + 1` 字节。
 
-**参数：**
-- `stv` : 源视图。
-- `mem` : 目标缓冲区。
-- `size` : 缓冲区大小。
-- `opts` : `stv_cstrOptions` 的按位组合。
+> 可用选项查看 [`stv_cstrOptions`](#stv_cstroptions)
 
-**返回值：**
-- 若缓冲区足够大返回 `mem`；否则返回 `NULL`。
-
-### stv_PFARG / stv_PFFMT
+示例：
 ```c
-#define stv_PFARG(stv)                                                         \
-    (int)(stv_empty(stv) ? 0 : (stv).len > INT_MAX ? INT_MAX : (stv).len),     \
-    (stv_empty(stv) ? "" : (stv).data)
-#define stv_PFFMT       "%.*s"
+char buf[6];
+stv_opt_cstr(stv_literal("Hello"), buf, 6, stv_Reverse | stv_ToUpper); // "OLLEH"
 ```
-用于 `printf` 风格格式化字符串视图的辅助宏。
 
-**用法：**
+| 参数   | 说明                     |
+|--------|--------------------------|
+| `stv`  | 源视图                   |
+| `mem`  | 目标缓冲区（不能为 NULL）|
+| `size` | 缓冲区大小（字节）       |
+| `opts` | 按位组合的转换选项       |
+
+| 返回  | 说明                                     |
+|-------|------------------------------------------|
+| `mem` | 若缓冲区不足或 `mem` 为 NULL 则返回 NULL |
+
+### `stv_opt_join`
 ```c
-printf("data: " stv_PFFMT "\n", stv_PFARG(myview));
+char* stv_opt_join(strview stv_arr[], size_t arr_len, char* mem, size_t size, strview sep, stv_cstrOptions opts);
 ```
-- 若视图长度超过 `INT_MAX`，长度将被截断。
-- 对于空视图，传入空字符串和长度 0。
+带转换选项的多个字符串连接输出，字符串之间用分隔符 `sep` 连接。写入 `mem` 并在结尾附加一个空字符。
+
+> 分隔符 `sep` 不受转换选项影响
+
+示例：
+```c
+strview arr[] = {stv_literal("Hello"), stv_literal("World")};
+char buf[20];
+stv_opt_join(arr, 2, buf, sizeof(buf), stv_literal(", "), stv_Default);
+// buf = "Hello, World"
+```
+
+| 参数      | 说明                                       |
+|-----------|--------------------------------------------|
+| `stv_arr` | 视图数组（仅在 `arr_len == 0` 时可为 NULL）|
+| `arr_len` | 数组元素个数                               |
+| `mem`     | 目标缓冲区（不能为 NULL）                  |
+| `size`    | 缓冲区大小（字节）                         |
+| `sep`     | 分隔符视图                                 |
+| `opts`    | 应用于每个数组元素的转换选项               |
+
+| 返回  | 说明                                     |
+|-------|------------------------------------------|
+| `mem` | 若缓冲区不足或 `mem` 为 NULL 则返回 NULL |
 
 ---
 
 ## 数值解析
 
-### stv_ch2digit
-```c
-int stv_ch2digit(char ch);
-```
-将字符转换为其数字值 (0‑35)。
-
-**参数：**
-- `ch` : 输入字符。
-
-**返回值：**
-- 对于 `'0'`‑`'9'` 返回 0‑9，对于 `'A'`‑`'Z'` 或 `'a'`‑`'z'` 返回 10‑35。  
-  若字符不是有效数字字符，则返回 `-1`。
-
-### stv_parseIntBase
-```c
-int stv_parseIntBase(strview stv, strview* remaining);
-```
-根据视图前缀检测数字基数。支持 `0b`/`0B`（二进制）、`0o`/`0O`（八进制）、`0d`/`0D`（十进制）、`0x`/`0X`（十六进制）。  
-单独的前导 `'0'` 不视为八进制，而是作为十进制数字的一部分保留。  
-若视图为空，则返回 `0` 并将 `*remaining` 设为空视图。
-
-**参数：**
-- `stv` : 要检查的视图。
-- `remaining` : 可选输出指针，用于接收前缀之后的部分。若为 `NULL`，则丢弃。
-
-**返回值：**
-- 检测到的基数（2、8、10 或 16）。若视图为空则返回 `0`。
-
-**详情：**
-- 与 C 标准库不同，单独的 `'0'` **不会** 被解释为八进制前缀，只有显式的 `0o`/`0O` 才会触发八进制。  
-- 识别到前缀时，返回的 `remaining` 从前缀后的第一个字符开始；否则 `remaining` 覆盖原始视图。
-
-### stv_parseInum
+### `stv_parseInum`
 ```c
 intmax_t stv_parseInum(strview stv, int base, strview* remaining);
 ```
-从字符串视图解析有符号整数。  
-跳过前导空白字符（定义见 [`stv_whitespace`](#stv_whitespace)），然后消耗可选的 `'+'` 或 `'-'` 符号。按指定基数解析数字，直到遇到非数字字符或视图结束。  
-若 `base` 为 `0`，则通过 [`stv_parseIntBase`](#stv_parseintbase) 自动检测基数。基数必须在 2‑36 范围内，否则函数返回 `0` 且除了空白和符号外不消耗更多字符。
+解析有符号整数，跳过前导空白，处理可选的 `+`/`-`，支持前导零。
 
-**参数：**
-- `stv` : 要解析的视图。
-- `base` : 基数 (2‑36)，或传入 `0` 自动检测。
-- `remaining` : 可选输出指针，指向第一个未处理的字符。若为 `NULL`，则丢弃剩余部分。
+支持基数为 2-36 进制或**根据进制前缀**自动检测（base=0）。
 
-**返回值：**
-- 解析出的 `intmax_t` 值。若未找到数字或基数无效则返回 `0`。  
-  溢出时，正数返回 `INTMAX_MAX`，负数返回 `INTMAX_MIN`，且 `remaining` 会跳过所有已解析的数字。
+溢出时返回 `INTMAX_MAX`/`INTMAX_MIN` 并消耗全部数字。
 
-### stv_parseUnum
+> 进制前缀判定规则查看 [`stv_parseIntBase`](#stv_parseintbase)
+
+示例：
+```c
+strview rem;
+intmax_t val = stv_parseInum(stv_literal("-42"), 10, &rem);
+// val = -42, rem = ""
+```
+
+| 参数        | 说明                           |
+|-------------|--------------------------------|
+| `stv`       | 输入视图                       |
+| `base`      | 基数（2-36），0 为自动检测     |
+| `remaining` | 输出剩余未解析部分（可为 NULL）|
+
+| 返回   | 说明                   |
+|--------|------------------------|
+| 解析值 | 无数字或无效基数返回 0 |
+
+### `stv_parseUnum`
 ```c
 uintmax_t stv_parseUnum(strview stv, int base, strview* remaining);
 ```
-从字符串视图解析无符号整数。  
-与 [`stv_parseInum`](#stv_parseinum) 类似，但返回 `uintmax_t`。负数通过将绝对值在无符号域中取模得到（例如 `"-40"` 解析为 `UINTMAX_MAX - 39`）。
+解析无符号整数，跳过前导空白，处理可选的 `+`/`-`，支持前导0。
 
-**参数：**
-- `stv` : 要解析的视图。
-- `base` : 基数 (2‑36)，或 `0` 自动检测。
-- `remaining` : 可选输出指针，指向剩余部分。
+支持基数为 2-36 进制或**根据进制前缀**自动检测（base=0）。
 
-**返回值：**
-- 解析出的 `uintmax_t` 值。无数字或无效基数返回 `0`。  
-  溢出时返回 `UINTMAX_MAX`。
+负数按取模方式转换（如 `-40` → `UINTMAX_MAX - 39`），溢出时返回 `UINTMAX_MAX` 并消耗全部数字。
 
----
+> 进制前缀判定规则查看 [`stv_parseIntBase`](#stv_parseintbase)
 
-## 宏与常量
-
-### stv_begin
+示例：
 ```c
-#define stv_begin (0)
+strview rem;
+uintmax_t val = stv_parseUnum(stv_literal("0xFF"), 0, &rem);
+// val = 255, rem = ""
 ```
-切片起始位置常量。
 
-### stv_end
-```c
-#define stv_end (stv_npos)
-```
-切片结束位置常量（表示“直至末尾”）。
+| 参数        | 说明                           |
+|-------------|--------------------------------|
+| `stv`       | 输入视图                       |
+| `base`      | 基数（2-36），0 为自动检测     |
+| `remaining` | 输出剩余未解析部分（可为 NULL）|
 
-### stv_npos
-```c
-#define stv_npos ((size_t)-1)
-```
-搜索/索引函数返回的哨兵值，表示“未找到”。
+| 返回   | 说明                   |
+|--------|------------------------|
+| 解析值 | 无数字或无效基数返回 0 |
 
-### stv_whitespace
+### `stv_ch2digit`
 ```c
-#define stv_whitespace stv_literal(" \r\n\t\v\f")
+int stv_ch2digit(char ch);
 ```
-包含常见空白字符（空格、CR、LF、制表符、垂直制表符、换页符）的预定义视图，常用于修剪和分割。
+将 `[0-9A-Za-z]` 转换为 36 进制数字。无效字符返回 -1。
+
+被 [`stv_parseInum`](#stv_parseinum) 和 [`stv_parseUnum`](#stv_parseunum) 内部使用。
+
+示例：
+```c
+int d1 = stv_ch2digit('5');   // 5
+int d2 = stv_ch2digit('B');   // 11
+int d3 = stv_ch2digit('!');   // -1
+```
+
+| 参数 | 说明         |
+|------|--------------|
+| `ch` | 要转换的字符 |
+
+| 返回 | 说明                  |
+|------|-----------------------|
+| 数字 | 0-36；无效数字返回 -1 |
+
+### `stv_parseIntBase`
+```c
+int stv_parseIntBase(strview stv, strview* remaining);
+```
+检测并跳过进制前缀，返回检测到的基数，并通过 `remaining` 输出前缀后的数值部分。空视图返回 0。
+
+若无可检测前缀则默认 10 进制，此时视图不消耗字符。
+
+被 [`stv_parseInum`](#stv_parseinum) 和 [`stv_parseUnum`](#stv_parseunum) 内部使用。
+
+进制前缀判定规则：
+- `0B/0b` -> 2 进制
+- `0O/0o` -> 8 进制
+- `0D/0d` -> 10 进制
+- `0X/0x` -> 16 进制
+
+示例：
+```c
+strview rem;
+int base = stv_parseIntBase(stv_literal("0xFF"), &rem);
+// base = 16, rem = "FF"
+```
+
+| 参数        | 说明                         |
+|-------------|------------------------------|
+| `stv`       | 输入视图                     |
+| `remaining` | 接受剩余部分输出（可为 NULL）|
+
+| 返回 | 说明                    |
+|------|-------------------------|
+| 基数 | 2/8/10/16；空视图返回 0 |
