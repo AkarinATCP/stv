@@ -79,38 +79,39 @@ void test_hash_different(void) {
 }
 
 /* ========== stv_forEach / stv_forEachRev ========== */
-static int     foreach_call_count;
-static char    foreach_last_char;
-static size_t  foreach_last_index;
-static strview foreach_last_view;
+static int    foreach_call_count;
+static char   foreach_last_char;
+static size_t foreach_last_index;
+static void*  foreach_last_ctx;
 
-static void foreach_test_callback(char ch, size_t idx, strview ctx) {
+static void foreach_test_callback(char ch, size_t idx, void* ctx) {
     foreach_call_count++;
     foreach_last_char  = ch;
     foreach_last_index = idx;
-    foreach_last_view  = ctx;
+    foreach_last_ctx   = ctx;
 }
 
 void test_forEach_empty(void) {
     foreach_call_count = -1;
-    stv_forEach(stv_nullstv, foreach_test_callback);
+    stv_forEach(stv_nullstv, foreach_test_callback, NULL);
     TEST_ASSERT_EQUAL_INT(-1, foreach_call_count);
 }
 
 void test_forEach_normal(void) {
     strview sv         = stv_literal("abc");
+    int     my_ctx     = 42;
     foreach_call_count = 0;
-    stv_forEach(sv, foreach_test_callback);
+    stv_forEach(sv, foreach_test_callback, &my_ctx);
     TEST_ASSERT_EQUAL_INT(3, foreach_call_count);
     TEST_ASSERT_EQUAL_CHAR('c', foreach_last_char);
     TEST_ASSERT_EQUAL_size_t(2, foreach_last_index);
-    TEST_ASSERT_TRUE(stv_equal(sv, foreach_last_view));
+    TEST_ASSERT_EQUAL_PTR(&my_ctx, foreach_last_ctx);
 }
 
 void test_forEach_single_char(void) {
     strview sv         = stv_literal("X");
     foreach_call_count = 0;
-    stv_forEach(sv, foreach_test_callback);
+    stv_forEach(sv, foreach_test_callback, NULL);
     TEST_ASSERT_EQUAL_INT(1, foreach_call_count);
     TEST_ASSERT_EQUAL_CHAR('X', foreach_last_char);
     TEST_ASSERT_EQUAL_size_t(0, foreach_last_index);
@@ -118,7 +119,7 @@ void test_forEach_single_char(void) {
 
 void test_forEach_does_not_modify_source(void) {
     strview sv = stv_literal("hello");
-    stv_forEach(sv, foreach_test_callback);
+    stv_forEach(sv, foreach_test_callback, NULL);
     TEST_ASSERT_EQUAL_STRING("hello", sv.data);
     TEST_ASSERT_EQUAL_size_t(5, sv.len);
 }
@@ -126,7 +127,7 @@ void test_forEach_does_not_modify_source(void) {
 void test_forEachRev_normal(void) {
     strview sv         = stv_literal("abc");
     foreach_call_count = 0;
-    stv_forEachRev(sv, foreach_test_callback);
+    stv_forEachRev(sv, foreach_test_callback, NULL);
     TEST_ASSERT_EQUAL_INT(3, foreach_call_count);
     TEST_ASSERT_EQUAL_CHAR('a', foreach_last_char);
     TEST_ASSERT_EQUAL_size_t(0, foreach_last_index);
@@ -134,14 +135,34 @@ void test_forEachRev_normal(void) {
 
 void test_forEachRev_empty(void) {
     foreach_call_count = -1;
-    stv_forEachRev(stv_nullstv, foreach_test_callback);
+    stv_forEachRev(stv_nullstv, foreach_test_callback, NULL);
     TEST_ASSERT_EQUAL_INT(-1, foreach_call_count);
 }
 
 void test_forEachRev_null_callback(void) {
     strview sv = stv_literal("abc");
-    stv_forEachRev(sv, NULL);
+    stv_forEachRev(sv, NULL, NULL);
     TEST_ASSERT_TRUE(true);
+}
+
+static void foreach_sum_callback(char ch, size_t idx, void* ctx) {
+    (void)idx;
+    int* sum = (int*)ctx;
+    *sum += (ch - '0');
+}
+
+void test_forEach_ctx_modify(void) {
+    strview sv  = stv_literal("123");
+    int     sum = 0;
+    stv_forEach(sv, foreach_sum_callback, &sum);
+    TEST_ASSERT_EQUAL_INT(6, sum);
+}
+
+void test_forEachRev_ctx_modify(void) {
+    strview sv  = stv_literal("123");
+    int     sum = 0;
+    stv_forEachRev(sv, foreach_sum_callback, &sum);
+    TEST_ASSERT_EQUAL_INT(6, sum);
 }
 
 /* ========== stv_PFFMT / stv_PFARG ========== */
@@ -195,6 +216,8 @@ void run_utils_tests(void) {
     RUN_TEST(test_forEachRev_normal);
     RUN_TEST(test_forEachRev_empty);
     RUN_TEST(test_forEachRev_null_callback);
+    RUN_TEST(test_forEach_ctx_modify);
+    RUN_TEST(test_forEachRev_ctx_modify);
     RUN_TEST(test_printf_macro);
     RUN_TEST(test_printf_macro_empty);
     RUN_TEST(test_same);

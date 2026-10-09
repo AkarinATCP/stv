@@ -10,78 +10,78 @@
 /* ========== first/last char ========== */
 void test_firstChar_found(void) {
     strview sv = stv_literal("hello");
-    TEST_ASSERT_EQUAL_size_t(0, stv_firstChar(sv, 'h', false));
-    TEST_ASSERT_EQUAL_size_t(4, stv_firstChar(sv, 'o', false));
+    TEST_ASSERT_EQUAL_size_t(0, stv_firstCh(sv, 'h', false));
+    TEST_ASSERT_EQUAL_size_t(4, stv_firstCh(sv, 'o', false));
 }
 
 void test_firstChar_not_found(void) {
-    TEST_ASSERT_EQUAL_size_t(stv_npos, stv_firstChar(stv_literal("abc"), 'x', false));
+    TEST_ASSERT_EQUAL_size_t(stv_npos, stv_firstCh(stv_literal("abc"), 'x', false));
 }
 
 void test_firstNotChar(void) {
     strview sv = stv_literal("aaabc");
-    TEST_ASSERT_EQUAL_size_t(3, stv_firstChar(sv, 'a', true));
-    TEST_ASSERT_EQUAL_size_t(stv_npos, stv_firstChar(stv_literal("aaa"), 'a', true));
+    TEST_ASSERT_EQUAL_size_t(3, stv_firstCh(sv, 'a', true));
+    TEST_ASSERT_EQUAL_size_t(stv_npos, stv_firstCh(stv_literal("aaa"), 'a', true));
 }
 
 void test_lastChar(void) {
     strview sv = stv_literal("abracadabra");
-    TEST_ASSERT_EQUAL_size_t(10, stv_lastChar(sv, 'a', false));
-    TEST_ASSERT_EQUAL_size_t(stv_npos, stv_lastChar(sv, 'z', false));
+    TEST_ASSERT_EQUAL_size_t(10, stv_lastCh(sv, 'a', false));
+    TEST_ASSERT_EQUAL_size_t(stv_npos, stv_lastCh(sv, 'z', false));
 }
 
 void test_lastNotChar(void) {
     strview sv = stv_literal("hello---");
-    TEST_ASSERT_EQUAL_size_t(4, stv_lastChar(sv, '-', true));
-    TEST_ASSERT_EQUAL_size_t(stv_npos, stv_lastChar(stv_literal("---"), '-', true));
+    TEST_ASSERT_EQUAL_size_t(4, stv_lastCh(sv, '-', true));
+    TEST_ASSERT_EQUAL_size_t(stv_npos, stv_lastCh(stv_literal("---"), '-', true));
 }
 
 void test_char_empty_view(void) {
     strview sv = stv_nullstv;
-    TEST_ASSERT_EQUAL_size_t(stv_npos, stv_firstChar(sv, 'x', false));
-    TEST_ASSERT_EQUAL_size_t(stv_npos, stv_firstChar(sv, 'x', true));
-    TEST_ASSERT_EQUAL_size_t(stv_npos, stv_lastChar(sv, 'x', false));
-    TEST_ASSERT_EQUAL_size_t(stv_npos, stv_lastChar(sv, 'x', true));
+    TEST_ASSERT_EQUAL_size_t(stv_npos, stv_firstCh(sv, 'x', false));
+    TEST_ASSERT_EQUAL_size_t(stv_npos, stv_firstCh(sv, 'x', true));
+    TEST_ASSERT_EQUAL_size_t(stv_npos, stv_lastCh(sv, 'x', false));
+    TEST_ASSERT_EQUAL_size_t(stv_npos, stv_lastCh(sv, 'x', true));
 }
 
 /* ========== first/last charset ========== */
 void test_firstCharset_found(void) {
     strview sv = stv_literal("abc123");
-    TEST_ASSERT_EQUAL_size_t(3, stv_firstCharset(sv, stv_literal("0123456789"), false));
-    TEST_ASSERT_EQUAL_size_t(0, stv_firstCharset(sv, stv_literal("0123456789"), true));
+    TEST_ASSERT_EQUAL_size_t(3, stv_firstChs(sv, stv_literal("0123456789"), false));
+    TEST_ASSERT_EQUAL_size_t(0, stv_firstChs(sv, stv_literal("0123456789"), true));
 }
 
 void test_firstCharset_not_found(void) {
-    TEST_ASSERT_EQUAL_size_t(stv_npos, stv_firstCharset(stv_literal("abc"), stv_literal("123"), false));
+    TEST_ASSERT_EQUAL_size_t(stv_npos, stv_firstChs(stv_literal("abc"), stv_literal("123"), false));
 }
 
 void test_lastCharset(void) {
     strview sv = stv_literal("abc123def456");
-    TEST_ASSERT_EQUAL_size_t(11, stv_lastCharset(sv, stv_literal("0123456789"), false));
-    TEST_ASSERT_EQUAL_size_t(8, stv_lastCharset(sv, stv_literal("0123456789"), true));
+    TEST_ASSERT_EQUAL_size_t(11, stv_lastChs(sv, stv_literal("0123456789"), false));
+    TEST_ASSERT_EQUAL_size_t(8, stv_lastChs(sv, stv_literal("0123456789"), true));
 }
 
 void test_charset_empty_view(void) {
-    TEST_ASSERT_EQUAL_size_t(stv_npos, stv_firstCharset(stv_nullstv, stv_whitespace, false));
-    TEST_ASSERT_EQUAL_size_t(stv_npos, stv_lastCharset(stv_nullstv, stv_whitespace, false));
+    TEST_ASSERT_EQUAL_size_t(stv_npos, stv_firstChs(stv_nullstv, stv_whitespace, false));
+    TEST_ASSERT_EQUAL_size_t(stv_npos, stv_lastChs(stv_nullstv, stv_whitespace, false));
 }
 
 /* ========== first/last charclass ========== */
 void test_firstCharClass_digit(void) {
     strview sv = stv_literal("abc123");
-    TEST_ASSERT_EQUAL_size_t(3, stv_firstCharClass(sv, isdigit, false));
-    TEST_ASSERT_EQUAL_size_t(0, stv_firstCharClass(sv, isdigit, true));
+    TEST_ASSERT_EQUAL_size_t(3, stv_firstIf(sv, isdigit, false));
+    TEST_ASSERT_EQUAL_size_t(0, stv_firstIf(sv, isdigit, true));
 }
 
 void test_lastCharClass_digit(void) {
     strview sv = stv_literal("123abc456");
-    TEST_ASSERT_EQUAL_size_t(8, stv_lastCharClass(sv, isdigit, false));
-    TEST_ASSERT_EQUAL_size_t(5, stv_lastCharClass(sv, isdigit, true));
+    TEST_ASSERT_EQUAL_size_t(8, stv_lastIf(sv, isdigit, false));
+    TEST_ASSERT_EQUAL_size_t(5, stv_lastIf(sv, isdigit, true));
 }
 
 void test_charClass_empty_view(void) {
-    TEST_ASSERT_EQUAL_size_t(stv_npos, stv_firstCharClass(stv_nullstv, isdigit, false));
-    TEST_ASSERT_EQUAL_size_t(stv_npos, stv_lastCharClass(stv_nullstv, isdigit, false));
+    TEST_ASSERT_EQUAL_size_t(stv_npos, stv_firstIf(stv_nullstv, isdigit, false));
+    TEST_ASSERT_EQUAL_size_t(stv_npos, stv_lastIf(stv_nullstv, isdigit, false));
 }
 
 /* ========== generic marco (C11) ========== */
@@ -201,79 +201,79 @@ void test_search_empty_pat(void) {
 void test_rev_search_found(void) {
     strview text = stv_literal("hello world hello");
     strview pat  = stv_literal("hello");
-    size_t  pos  = stv_rev_search(text, pat, false);
+    size_t  pos  = stv_searchRev(text, pat, false);
     TEST_ASSERT_EQUAL_size_t(12, pos);
 }
 
 void test_rev_search_nocase(void) {
     strview text = stv_literal("hello world HELLO");
     strview pat  = stv_literal("hello");
-    size_t  pos  = stv_rev_search(text, pat, true);
+    size_t  pos  = stv_searchRev(text, pat, true);
     TEST_ASSERT_EQUAL_size_t(12, pos);
 }
 
 void test_rev_search_not_found(void) {
     strview text = stv_literal("abc");
     strview pat  = stv_literal("xyz");
-    TEST_ASSERT_EQUAL_size_t(stv_npos, stv_rev_search(text, pat, false));
+    TEST_ASSERT_EQUAL_size_t(stv_npos, stv_searchRev(text, pat, false));
 }
 
 void test_rev_search_empty_pattern(void) {
     strview text = stv_literal("abc");
-    TEST_ASSERT_EQUAL_size_t(3, stv_rev_search(text, stv_nullstv, false));
+    TEST_ASSERT_EQUAL_size_t(3, stv_searchRev(text, stv_nullstv, false));
 }
 
 void test_rev_search_longer_pat(void) {
     strview text = stv_literal("ab");
     strview pat  = stv_literal("abc");
-    TEST_ASSERT_EQUAL_size_t(stv_npos, stv_rev_search(text, pat, false));
+    TEST_ASSERT_EQUAL_size_t(stv_npos, stv_searchRev(text, pat, false));
 }
 
 void test_rev_search_single_char(void) {
     strview text = stv_literal("aaaa");
     strview pat  = stv_literal("a");
-    TEST_ASSERT_EQUAL_size_t(3, stv_rev_search(text, pat, false));
+    TEST_ASSERT_EQUAL_size_t(3, stv_searchRev(text, pat, false));
 }
 
 void test_rev_naive_search_found(void) {
     strview text = stv_literal("ababa");
     strview pat  = stv_literal("aba");
-    TEST_ASSERT_EQUAL_size_t(2, stv_rev_naiveSearch(text, pat, false));
+    TEST_ASSERT_EQUAL_size_t(2, stv_naiveSearchRev(text, pat, false));
 }
 
 void test_rev_naive_search_nocase(void) {
     strview text = stv_literal("abABA");
     strview pat  = stv_literal("aba");
-    TEST_ASSERT_EQUAL_size_t(2, stv_rev_naiveSearch(text, pat, true));
+    TEST_ASSERT_EQUAL_size_t(2, stv_naiveSearchRev(text, pat, true));
 }
 
 void test_rev_naive_search_not_found(void) {
     strview text = stv_literal("xyz");
     strview pat  = stv_literal("abc");
-    TEST_ASSERT_EQUAL_size_t(stv_npos, stv_rev_naiveSearch(text, pat, false));
+    TEST_ASSERT_EQUAL_size_t(stv_npos, stv_naiveSearchRev(text, pat, false));
 }
 
 void test_rev_naive_search_empty_pattern(void) {
     strview text = stv_literal("abc");
-    TEST_ASSERT_EQUAL_size_t(3, stv_rev_naiveSearch(text, stv_nullstv, false));
+    TEST_ASSERT_EQUAL_size_t(3, stv_naiveSearchRev(text, stv_nullstv, false));
 }
 
 void test_rev_sunday_search_found(void) {
     strview text = stv_literal("find the needle, then another needle here");
     strview pat  = stv_literal("needle");
-    size_t  pos  = stv_rev_sundaySearch(text, pat, false);
+    size_t  pos  = stv_sundaySearchRev(text, pat, false);
     TEST_ASSERT_EQUAL_size_t(30, pos);
 }
 
 void test_rev_sunday_search_not_found(void) {
     strview text = stv_literal("abcde");
     strview pat  = stv_literal("xyz");
-    TEST_ASSERT_EQUAL_size_t(stv_npos, stv_rev_sundaySearch(text, pat, false));
+    TEST_ASSERT_EQUAL_size_t(stv_npos, stv_sundaySearchRev(text, pat, false));
 }
 
 void test_rev_sunday_search_empty_pattern(void) {
     strview text = stv_literal("abc");
-    TEST_ASSERT_EQUAL_size_t(3, stv_rev_sundaySearch(text, stv_nullstv, false));
+    TEST_ASSERT_EQUAL_size_t(3, stv_sundaySearchRev(text, stv_nullstv, false));
 }
 
 void run_search_tests(void) {

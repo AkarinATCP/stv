@@ -14,20 +14,20 @@ void test_countIf_digits(void) {
 }
 
 void test_countIf_empty(void) {
-    TEST_ASSERT_EQUAL_size_t(stv_npos, stv_countIf(stv_nullstv, isdigit));
+    TEST_ASSERT_EQUAL_size_t(0, stv_countIf(stv_nullstv, isdigit));
 }
 
 void test_countIf_null_handle(void) {
-    TEST_ASSERT_EQUAL_size_t(stv_npos, stv_countIf(stv_literal("abc"), NULL));
+    TEST_ASSERT_EQUAL_size_t(0, stv_countIf(stv_literal("abc"), NULL));
 }
 
 void test_countChar_normal(void) {
     strview sv = stv_literal("hello world");
-    TEST_ASSERT_EQUAL_size_t(3, stv_countChar(sv, 'l'));
+    TEST_ASSERT_EQUAL_size_t(3, stv_countCh(sv, 'l'));
 }
 
 void test_countChar_empty(void) {
-    TEST_ASSERT_EQUAL_size_t(stv_npos, stv_countChar(stv_nullstv, 'a'));
+    TEST_ASSERT_EQUAL_size_t(0, stv_countCh(stv_nullstv, 'a'));
 }
 
 void test_countSubstr_normal(void) {
@@ -42,7 +42,7 @@ void test_countSubstr_empty(void) {
 }
 
 void test_countSubstr_empty_source(void) {
-    TEST_ASSERT_EQUAL_size_t(stv_npos, stv_countSubstr(stv_nullstv, stv_literal("a")));
+    TEST_ASSERT_EQUAL_size_t(0, stv_countSubstr(stv_nullstv, stv_literal("a")));
 }
 
 /* ========== every / some ========== */
@@ -59,15 +59,15 @@ void test_everyIf_empty(void) {
 }
 
 void test_everyChar_true(void) {
-    TEST_ASSERT_TRUE(stv_everyChar(stv_literal("aaaa"), 'a'));
+    TEST_ASSERT_TRUE(stv_everyCh(stv_literal("aaaa"), 'a'));
 }
 
 void test_everyChar_false(void) {
-    TEST_ASSERT_FALSE(stv_everyChar(stv_literal("aaab"), 'a'));
+    TEST_ASSERT_FALSE(stv_everyCh(stv_literal("aaab"), 'a'));
 }
 
 void test_everyChar_empty(void) {
-    TEST_ASSERT_FALSE(stv_everyChar(stv_nullstv, 'x'));
+    TEST_ASSERT_FALSE(stv_everyCh(stv_nullstv, 'x'));
 }
 
 void test_someIf_digit(void) {
@@ -83,71 +83,66 @@ void test_someIf_empty(void) {
 }
 
 void test_someChar_found(void) {
-    TEST_ASSERT_TRUE(stv_someChar(stv_literal("hello"), 'e'));
+    TEST_ASSERT_TRUE(stv_someCh(stv_literal("hello"), 'e'));
 }
 
 void test_someChar_not_found(void) {
-    TEST_ASSERT_FALSE(stv_someChar(stv_literal("hello"), 'x'));
+    TEST_ASSERT_FALSE(stv_someCh(stv_literal("hello"), 'x'));
 }
 
 void test_someChar_empty(void) {
-    TEST_ASSERT_FALSE(stv_someChar(stv_nullstv, 'a'));
+    TEST_ASSERT_FALSE(stv_someCh(stv_nullstv, 'a'));
 }
 
 /* ========== startsWith / endsWith / contains ========== */
 void test_startsWith_true(void) {
     strview text = stv_literal("Hello World!");
     strview pat  = stv_literal("Hello");
-    TEST_ASSERT_TRUE(stv_startsWith(text, pat));
-    TEST_ASSERT_TRUE(stv_startsWithNocase(text, stv_literal("hello")));
+    TEST_ASSERT_TRUE(stv_startsWith(text, pat, false));
+    TEST_ASSERT_TRUE(stv_startsWith(text, stv_literal("hello"), true));
 }
 
 void test_startsWith_false(void) {
     strview text = stv_literal("Hello");
     strview pat  = stv_literal("World");
-    TEST_ASSERT_FALSE(stv_startsWith(text, pat));
-    TEST_ASSERT_FALSE(stv_startsWithNocase(text, pat));
+    TEST_ASSERT_FALSE(stv_startsWith(text, pat, false));
+    TEST_ASSERT_FALSE(stv_startsWith(text, pat, true));
 }
 
 void test_startsWith_empty_pat(void) {
-    TEST_ASSERT_TRUE(stv_startsWith(stv_literal("abc"), stv_nullstv));
-    TEST_ASSERT_TRUE(stv_startsWithNocase(stv_literal("abc"), stv_nullstv));
+    TEST_ASSERT_TRUE(stv_startsWith(stv_literal("abc"), stv_nullstv, false));
+    TEST_ASSERT_TRUE(stv_startsWith(stv_literal("abc"), stv_nullstv, true));
 }
 
 void test_endsWith(void) {
     strview text = stv_literal("document.txt");
     strview pat  = stv_literal(".txt");
-    TEST_ASSERT_TRUE(stv_endsWith(text, pat));
-    TEST_ASSERT_TRUE(stv_endsWithNocase(text, stv_literal(".TXT")));
-    TEST_ASSERT_FALSE(stv_endsWith(text, stv_literal(".doc")));
+    TEST_ASSERT_TRUE(stv_endsWith(text, pat, false));
+    TEST_ASSERT_TRUE(stv_endsWith(text, stv_literal(".TXT"), true));
+    TEST_ASSERT_FALSE(stv_endsWith(text, stv_literal(".doc"), false));
 }
 
 void test_endsWith_empty(void) {
-    TEST_ASSERT_TRUE(stv_endsWith(stv_literal("any"), stv_nullstv));
-    TEST_ASSERT_TRUE(stv_endsWithNocase(stv_literal("any"), stv_nullstv));
+    TEST_ASSERT_TRUE(stv_endsWith(stv_literal("any"), stv_nullstv, false));
+    TEST_ASSERT_TRUE(stv_endsWith(stv_literal("any"), stv_nullstv, true));
 }
 
 void test_contains(void) {
     strview text = stv_literal("the quick brown fox");
-    TEST_ASSERT_TRUE(stv_contains(text, stv_literal("quick")));
-    TEST_ASSERT_TRUE(stv_containsNocase(text, stv_literal("QUICK")));
-    TEST_ASSERT_FALSE(stv_contains(text, stv_literal("slow")));
+    TEST_ASSERT_TRUE(stv_contains(text, stv_literal("quick"), false));
+    TEST_ASSERT_TRUE(stv_contains(text, stv_literal("QUICK"), true));
+    TEST_ASSERT_FALSE(stv_contains(text, stv_literal("slow"), false));
 }
 
 void test_contains_empty_pat(void) {
-    TEST_ASSERT_TRUE(stv_contains(stv_literal("abc"), stv_nullstv));
-    TEST_ASSERT_TRUE(stv_containsNocase(stv_literal("abc"), stv_nullstv));
+    TEST_ASSERT_TRUE(stv_contains(stv_literal("abc"), stv_nullstv, false));
+    TEST_ASSERT_TRUE(stv_contains(stv_literal("abc"), stv_nullstv, true));
 }
 
-/* ========== generic marco (C11) ========== */
+/* ========== generic macro (C11) ========== */
 #if defined(LIB_STV_GENERIC)
 void test_stv_count_char(void) {
     size_t cnt = stv_count(stv_literal("hello"), 'l');
-    TEST_ASSERT_EQUAL_size_t(2, cnt);
-}
-
-void test_stv_count_substr(void) {
-    size_t cnt = stv_count(stv_literal("abcabc"), stv_literal("ab"));
     TEST_ASSERT_EQUAL_size_t(2, cnt);
 }
 
@@ -197,7 +192,6 @@ void run_count_predicate_tests(void) {
     RUN_TEST(test_contains_empty_pat);
 #if defined(LIB_STV_GENERIC)
     RUN_TEST(test_stv_count_char);
-    RUN_TEST(test_stv_count_substr);
     RUN_TEST(test_stv_count_if);
     RUN_TEST(test_stv_every_macro);
     RUN_TEST(test_stv_some_macro);

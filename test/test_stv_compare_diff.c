@@ -6,7 +6,7 @@
 #include "stv.h"
 #include "unity/unity.h"
 
-/* ========== stv_compare / stv_compareNocase ========== */
+/* ========== stv_compare / stv_compareEx ========== */
 void test_compare_equal(void) {
     TEST_ASSERT_EQUAL_INT(0, stv_compare(stv_literal("abc"), stv_literal("abc")));
 }
@@ -24,27 +24,27 @@ void test_compare_shorter(void) {
 }
 
 void test_compareNocase_equal(void) {
-    TEST_ASSERT_EQUAL_INT(0, stv_compareNocase(stv_literal("abc"), stv_literal("ABC")));
-    TEST_ASSERT_EQUAL_INT(0, stv_compareNocase(stv_literal("Hello"), stv_literal("hello")));
+    TEST_ASSERT_EQUAL_INT(0, stv_compareEx(stv_literal("abc"), stv_literal("ABC"), true));
+    TEST_ASSERT_EQUAL_INT(0, stv_compareEx(stv_literal("Hello"), stv_literal("hello"), true));
 }
 
 void test_compareNocase_less(void) {
-    TEST_ASSERT_TRUE(stv_compareNocase(stv_literal("abc"), stv_literal("ABD")) < 0);
-    TEST_ASSERT_TRUE(stv_compareNocase(stv_literal("a"), stv_literal("B")) < 0);
+    TEST_ASSERT_TRUE(stv_compareEx(stv_literal("abc"), stv_literal("ABD"), true) < 0);
+    TEST_ASSERT_TRUE(stv_compareEx(stv_literal("a"), stv_literal("B"), true) < 0);
 }
 
 void test_compareNocase_greater(void) {
-    TEST_ASSERT_TRUE(stv_compareNocase(stv_literal("abd"), stv_literal("ABC")) > 0);
+    TEST_ASSERT_TRUE(stv_compareEx(stv_literal("abd"), stv_literal("ABC"), true) > 0);
 }
 
 void test_compareNocase_shorter_prefix(void) {
-    TEST_ASSERT_TRUE(stv_compareNocase(stv_literal("ab"), stv_literal("ABC")) < 0);
+    TEST_ASSERT_TRUE(stv_compareEx(stv_literal("ab"), stv_literal("ABC"), true) < 0);
 }
 
 void test_compareNocase_empty(void) {
-    TEST_ASSERT_TRUE(stv_compareNocase(stv_nullstv, stv_literal("a")) < 0);
-    TEST_ASSERT_TRUE(stv_compareNocase(stv_literal("a"), stv_nullstv) > 0);
-    TEST_ASSERT_EQUAL_INT(0, stv_compareNocase(stv_nullstv, stv_nullstv));
+    TEST_ASSERT_TRUE(stv_compareEx(stv_nullstv, stv_literal("a"), true) < 0);
+    TEST_ASSERT_TRUE(stv_compareEx(stv_literal("a"), stv_nullstv, true) > 0);
+    TEST_ASSERT_EQUAL_INT(0, stv_compareEx(stv_nullstv, stv_nullstv, true));
 }
 
 /* ========== stv_firstDiff / stv_lastDiff ========== */
@@ -105,15 +105,15 @@ void test_diff_both_empty(void) {
     TEST_ASSERT_EQUAL_size_t(stv_npos, stv_lastDiff(stv_nullstv, stv_nullstv, false));
 }
 
-/* ========== stv_equal / stv_equalNocase ========== */
+/* ========== stv_equal / stv_equalEx ========== */
 void test_equal(void) {
     TEST_ASSERT_TRUE(stv_equal(stv_literal("abc"), stv_literal("abc")));
     TEST_ASSERT_FALSE(stv_equal(stv_literal("abc"), stv_literal("ab")));
 }
 
 void test_equalNocase(void) {
-    TEST_ASSERT_TRUE(stv_equalNocase(stv_literal("abc"), stv_literal("ABC")));
-    TEST_ASSERT_FALSE(stv_equalNocase(stv_literal("abc"), stv_literal("abd")));
+    TEST_ASSERT_TRUE(stv_equalEx(stv_literal("abc"), stv_literal("ABC"), true));
+    TEST_ASSERT_FALSE(stv_equalEx(stv_literal("abc"), stv_literal("abd"), true));
 }
 
 void run_compare_diff_tests(void) {
