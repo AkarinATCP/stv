@@ -91,34 +91,69 @@ typedef struct {
 typedef int (*stv_charClassFn)(int);
 
 /**
- * @brief Callback type for stv_forEach()
+ * @brief Callback type for stv_forEach() and stv_forEachRev()
  *
  * @param ch  Current character
- * @param idx Zero‑based index of the character
- * @param ctx The original `strview` passed to `stv_forEach()`
+ * @param idx Zero‑based index of the character (descending in stv_forEachRev)
+ * @param ctx User‑provided context pointer, passed through unchanged from the
+ *            calling function
  */
-typedef void (*stv_forEachFn)(char ch, size_t idx, strview ctx);
+typedef void (*stv_forEachFn)(char ch, size_t idx, void* ctx);
 
 /**
- * @brief Output options for stv_opt_cstr() (bitwise combinable)
+ * @brief Output options for stv_cstr() and stv_join() (bitwise combinable)
  *
- * Each option can be combined using bitwise OR. They control character case
- * and reversal during string copy.
+ * Each option can be combined using bitwise OR. They control character case,
+ * byte reversal, truncation, and array iteration order during copy.
  *
- * - `stv_Default`  (0x00): No transformation (plain copy).
- * - `stv_ToUpper`  (0x01): Convert characters to uppercase (using ASCII mask).
- * - `stv_ToLower`  (0x02): Convert characters to lowercase (using ASCII mask).
- * - `stv_Reverse`  (0x04): Reverse the order of characters in the output.
- * - `stv_Truncate` (0x08): Truncate the string if `len` exceeds or equals the buffer size.
+ * - `stv_Default`     (0x00): No transformation; plain byte copy.
  *
- * @note When both `stv_ToUpper` and `stv_ToLower` are set, the result is swapCase (e.g., `Abc` → `aBC`).
+ * - `stv_ToUpper`     (0x01): For each output byte, convert ASCII `'a'`-`'z'` to
+ *                             `'A'`-`'Z'`. All other bytes are copied unchanged.
+ *
+ * - `stv_ToLower`     (0x02): For each output byte, convert ASCII `'A'`-`'Z'` to
+ *                             `'a'`-`'z'`. All other bytes are copied unchanged.
+ *
+ * - `stv_Reverse`     (0x04): Reverse the byte order of the *entire* output written
+ *                             to `mem`. For `stv_join`, the reversal is performed on
+ *                             the fully joined result, not on individual elements.
+ *
+ * - `stv_Truncate`    (0x08): If the output would not fit in `mem`, write as much as
+ *                             possible (keeping space for the null terminator) and
+ *                             return `mem`. When NOT set, `stv_cstr` / `stv_join`
+ *                             return `NULL` on overflow and leave `mem` untouched.
+ *
+ * - `stv_JoinReverse` (0x10): Only honoured by `stv_join`. Iterate `stv_arr` from the
+ *                             last element to the first. Ignored by `stv_cstr`.
+ *
+ * - `stv_ViewReverse` (0x20): Read each source view from its last byte to its first.
+ *                             In `stv_cstr`, this changes which source bytes are
+ *                             consumed (see truncation note below). In `stv_join`, it
+ *                             is applied independently to each element *before* any
+ *                             whole-buffer `stv_Reverse` reversal.
+ *
+ * @note `stv_Reverse` and `stv_ViewReverse` both invert byte order, but at different
+ *       stages:
+ *       - `stv_cstr` without truncation: both flags together cancel out, because
+ *         every source byte is read backwards and then written backwards.
+ *       - `stv_cstr` with truncation (`size - 1 < stv.len`): they no longer cancel.
+ *         `stv_ViewReverse` selects the *last* `size - 1` source bytes, whereas the
+ *         default would select the *first* `size - 1` bytes.
+ *       - `stv_join`: the two flags never cancel, because `stv_ViewReverse` acts on
+ *         each element while `stv_Reverse` acts once on the whole joined buffer.
+ *
+ * @note When both `stv_ToUpper` and `stv_ToLower` are set, the effective behaviour is
+ *       swap-case for ASCII letters (e.g., `"Abc"` -> `"aBC"`), because the upper
+ *       branch is tested first and the lower branch handles the remaining letters.
  */
 typedef enum {
-    stv_Default  = 0, // 0b00000000
-    stv_ToUpper  = 1, // 0b00000001
-    stv_ToLower  = 2, // 0b00000010
-    stv_Reverse  = 4, // 0b00000100
-    stv_Truncate = 8, // 0b00001000
+    stv_Default     = 0,  // 0b00000000
+    stv_ToUpper     = 1,  // 0b00000001
+    stv_ToLower     = 2,  // 0b00000010
+    stv_Reverse     = 4,  // 0b00000100
+    stv_Truncate    = 8,  // 0b00001000
+    stv_JoinReverse = 16, // 0b00010000
+    stv_ViewReverse = 32, // 0b00100000
 } stv_cstrOptions;
 
 /**
@@ -181,22 +216,10 @@ LIB_STV_FN strview stv_removeEnd(strview stv, size_t len);
  *
  * @param stv    The source string view
  * @param prefix The prefix to remove (may be empty; an empty prefix matches and returns `stv` unchanged)
+ * @param nocase If true, the prefix comparison ignores ASCII letter case
  * @return A view without the prefix, or the original view if it does not start with `prefix`
  */
-LIB_STV_FN strview stv_removePrefix(strview stv, strview prefix);
-
-/**
- * @brief Remove the prefix from the view case‑insensitively
- *
- * Checks if `stv` starts with `prefix` (ignoring ASCII letter case);
- * if so, returns the remainder of the view after the prefix.
- * If the prefix does not match, the original view is returned unchanged.
- *
- * @param stv    The source string view
- * @param prefix The prefix to remove (may be empty; an empty prefix matches and returns `stv` unchanged)
- * @return A view without the prefix, or the original view if it does not start with `prefix`
- */
-LIB_STV_FN strview stv_removePrefixNocase(strview stv, strview prefix);
+LIB_STV_FN strview stv_removePrefix(strview stv, strview prefix, bool nocase);
 
 /**
  * @brief Remove the suffix from the view if it ends with the given pattern
@@ -206,22 +229,10 @@ LIB_STV_FN strview stv_removePrefixNocase(strview stv, strview prefix);
  *
  * @param stv    The source string view
  * @param suffix The suffix to remove (may be empty; an empty suffix matches and returns `stv` unchanged)
+ * @param nocase If true, the suffix comparison ignores ASCII letter case
  * @return A view without the suffix, or the original view if it does not end with `suffix`
  */
-LIB_STV_FN strview stv_removeSuffix(strview stv, strview suffix);
-
-/**
- * @brief Remove the suffix from the view case‑insensitively
- *
- * Checks if `stv` ends with `suffix` (ignoring ASCII letter case);
- * if so, returns the view without the suffix.
- * If the suffix does not match, the original view is returned unchanged.
- *
- * @param stv    The source string view
- * @param suffix The suffix to remove (may be empty; an empty suffix matches and returns `stv` unchanged)
- * @return A view without the suffix, or the original view if it does not end with `suffix`
- */
-LIB_STV_FN strview stv_removeSuffixNocase(strview stv, strview suffix);
+LIB_STV_FN strview stv_removeSuffix(strview stv, strview suffix, bool nocase);
 
 /**
  * @brief Split a string view at the first occurrence of a separator
@@ -238,12 +249,12 @@ LIB_STV_FN strview stv_removeSuffixNocase(strview stv, strview suffix);
  *
  * @param stv       The string view to split
  * @param sep       The separator view (may be empty)
- * @param nocase    If true, the separator search ignores ASCII letter case
  * @param remaining Optional pointer to a `strview` that receives the remainder after the separator;
  *                  may be NULL if the remainder is not needed
+ * @param nocase    If true, the separator search ignores ASCII letter case
  * @return The part before the separator, or the entire view if the separator is not found
  */
-LIB_STV_FN strview stv_split(strview stv, strview sep, bool nocase, strview* remaining);
+LIB_STV_FN strview stv_split(strview stv, strview sep, strview* remaining, bool nocase);
 
 /**
  * @brief Split the view at the first line break, supporting CR, LF, and CRLF
@@ -342,17 +353,20 @@ LIB_STV_FN strview stv_afterLastDelim(strview stv, strview delim);
 
 #ifdef LIB_STV_GENERIC
     /**
-     * @brief Trim characters from both ends of a string view (generic)
+     * @brief Generic trim helper: selects stv_trimIf() or stv_trimChs()
      *
-     * Dispatches to `stv_trimChs()` or `stv_trimIf()` based on the type of `target`:
-     * - If `target` is a `strview`, it is treated as a character set.
-     * - If `target` is a `stv_charClassFn`, it is treated as a character classification function.
+     * The second argument is inspected with `_Generic`:
+     * - `stv_charClassFn` → `stv_trimIf(stv, handle)` (trim characters satisfying the classification function)
+     * - `strview`         → `stv_trimChs(stv, charset)` (trim characters belonging to the charset)
+     *
+     * Any other type is a compile-time error.
+     *
+     * Trims both ends of the view.
      *
      * @param stv    Source string view
-     * @param target A `strview` charset or a `stv_charClassFn` function pointer
-     * @return A new view with leading and trailing matching characters removed
+     * @param target Character classification function or charset view
      */
-    #define stv_trim(stv, target) _Generic((target), strview: stv_trimChs, stv_charClassFn: stv_trimIf)((stv), (target))
+    #define stv_trim(stv, target) _Generic((target), stv_charClassFn: stv_trimIf, strview: stv_trimChs)((stv), (target))
 #endif
 
 /**
@@ -376,18 +390,21 @@ LIB_STV_FN strview stv_trimIf(strview stv, stv_charClassFn handle);
 
 #ifdef LIB_STV_GENERIC
     /**
-     * @brief Trim characters from the beginning of a string view (generic)
+     * @brief Generic trim-start helper: selects stv_trimStartIf() or stv_trimStartChs()
      *
-     * Dispatches to `stv_trimStartChs()` or `stv_trimStartIf()` based on the type of `target`:
-     * - If `target` is a `strview`, it is treated as a character set.
-     * - If `target` is a `stv_charClassFn`, it is treated as a character classification function.
+     * The second argument is inspected with `_Generic`:
+     * - `stv_charClassFn` → `stv_trimStartIf(stv, handle)`
+     * - `strview`         → `stv_trimStartChs(stv, charset)`
+     *
+     * Any other type is a compile-time error.
+     *
+     * Only the beginning of the view is trimmed.
      *
      * @param stv    Source string view
-     * @param target A `strview` charset or a `stv_charClassFn` function pointer
-     * @return A new view with leading matching characters removed
+     * @param target Character classification function or charset view
      */
     #define stv_trimStart(stv, target)                                                                                 \
-        _Generic((target), strview: stv_trimStartChs, stv_charClassFn: stv_trimStartIf)((stv), (target))
+        _Generic((target), stv_charClassFn: stv_trimStartIf, strview: stv_trimStartChs)((stv), (target))
 #endif // LIB_STV_GENERIC
 
 /**
@@ -410,18 +427,21 @@ LIB_STV_FN strview stv_trimStartIf(strview stv, stv_charClassFn handle);
 
 #ifdef LIB_STV_GENERIC
     /**
-     * @brief Trim characters from the end of a string view (generic)
+     * @brief Generic trim-end helper: selects stv_trimEndIf() or stv_trimEndChs()
      *
-     * Dispatches to `stv_trimEndChs()` or `stv_trimEndIf()` based on the type of `target`:
-     * - If `target` is a `strview`, it is treated as a character set.
-     * - If `target` is a `stv_charClassFn`, it is treated as a character classification function.
+     * The second argument is inspected with `_Generic`:
+     * - `stv_charClassFn` → `stv_trimEndIf(stv, handle)`
+     * - `strview`         → `stv_trimEndChs(stv, charset)`
+     *
+     * Any other type is a compile-time error.
+     *
+     * Only the end of the view is trimmed.
      *
      * @param stv    Source string view
-     * @param target A `strview` charset or a `stv_charClassFn` function pointer
-     * @return A new view with trailing matching characters removed
+     * @param target Character classification function or charset view
      */
     #define stv_trimEnd(stv, target)                                                                                   \
-        _Generic((target), strview: stv_trimEndChs, stv_charClassFn: stv_trimEndIf)((stv), (target))
+        _Generic((target), stv_charClassFn: stv_trimEndIf, strview: stv_trimEndChs)((stv), (target))
 #endif
 
 /**
@@ -485,7 +505,7 @@ LIB_STV_FN size_t stv_sundaySearch(strview stv_text, strview stv_pat, bool nocas
  * @param nocase   If true, character comparisons ignore ASCII letter case
  * @return Start position of the last match; returns `stv_text.len` if `stv_pat` is empty, or `stv_npos` if not found
  */
-LIB_STV_FN size_t stv_rev_search(strview stv_text, strview stv_pat, bool nocase);
+LIB_STV_FN size_t stv_searchRev(strview stv_text, strview stv_pat, bool nocase);
 
 /**
  * @brief Naive last‑occurrence string search (suitable for short patterns)
@@ -497,7 +517,7 @@ LIB_STV_FN size_t stv_rev_search(strview stv_text, strview stv_pat, bool nocase)
  * @param nocase   If true, character comparisons ignore ASCII letter case
  * @return Start position of the last match; returns `stv_text.len` if `stv_pat` is empty, or `stv_npos` if not found
  */
-LIB_STV_FN size_t stv_rev_naiveSearch(strview stv_text, strview stv_pat, bool nocase);
+LIB_STV_FN size_t stv_naiveSearchRev(strview stv_text, strview stv_pat, bool nocase);
 
 /**
  * @brief Sunday last‑occurrence string search (suitable for longer patterns)
@@ -509,24 +529,26 @@ LIB_STV_FN size_t stv_rev_naiveSearch(strview stv_text, strview stv_pat, bool no
  * @param nocase   If true, character comparisons ignore ASCII letter case
  * @return Start position of the last match; returns `stv_text.len` if `stv_pat` is empty, or `stv_npos` if not found
  */
-LIB_STV_FN size_t stv_rev_sundaySearch(strview stv_text, strview stv_pat, bool nocase);
+LIB_STV_FN size_t stv_sundaySearchRev(strview stv_text, strview stv_pat, bool nocase);
 
 #ifdef LIB_STV_GENERIC
     /**
-     * @brief Find the first occurrence of a character, charset member, or character class (generic)
+     * @brief Generic first-index search: dispatches on the type of `target`
      *
-     * Dispatches based on the type of `target`:
-     * - `char`:            calls `stv_firstChar()`
-     * - `strview`:         calls `stv_firstCharset()`
-     * - `stv_charClassFn`: calls `stv_firstCharClass()`
+     * The second argument is inspected with `_Generic`:
+     * - `int` / `char`      → `stv_firstCh(stv, ch, invert)`
+     * - `stv_charClassFn`   → `stv_firstIf(stv, handle, invert)`
+     * - `strview`           → `stv_firstChs(stv, charset, invert)`
+     *
+     * Any other type is a compile-time error.
      *
      * @param stv    The string view to search
-     * @param target A `char`, a `strview` charset, or a character classification function
-     * @param invert If true, search for the first character NOT matching; otherwise search for the first match
-     * @return Index of the first match, or `stv_npos` if not found or the view is empty
+     * @param target Character, classification function, or charset view
+     * @param invert If true, search for the first character that does *not* match
+     * @return Index of the first match, or `stv_npos` if not found
      */
     #define stv_firstIndex(stv, target, invert)                                                                        \
-        _Generic((target), int: stv_firstChar, strview: stv_firstCharset, stv_charClassFn: stv_firstCharClass)(        \
+        _Generic((target), int: stv_firstCh, char: stv_firstCh, stv_charClassFn: stv_firstIf, strview: stv_firstChs)(  \
             (stv), (target), (invert))
 #endif
 
@@ -538,17 +560,18 @@ LIB_STV_FN size_t stv_rev_sundaySearch(strview stv_text, strview stv_pat, bool n
  * @param invert If true, search for the first character NOT equal to `ch`
  * @return Index of the first match, or `stv_npos` if not found or the view is empty
  */
-LIB_STV_FN size_t stv_firstChar(strview stv, const char ch, bool invert);
+LIB_STV_FN size_t stv_firstCh(strview stv, const char ch, bool invert);
 
 /**
  * @brief Find the first occurrence of any character from a charset
  *
  * @param stv     The string view to search
- * @param charset Character set view (an empty charset always yields `stv_npos`)
+ * @param charset Character set view. An empty charset matches no characters when
+ *                `invert` is false, and matches all characters when `invert` is true.
  * @param invert  If true, search for the first character NOT in the charset
  * @return Index of the first match, or `stv_npos` if not found or the view is empty
  */
-LIB_STV_FN size_t stv_firstCharset(strview stv, strview charset, bool invert);
+LIB_STV_FN size_t stv_firstChs(strview stv, strview charset, bool invert);
 
 /**
  * @brief Find the first character that satisfies a classification function
@@ -558,24 +581,28 @@ LIB_STV_FN size_t stv_firstCharset(strview stv, strview charset, bool invert);
  * @param invert If true, search for the first character that does NOT satisfy `handle`
  * @return Index of the first match, or `stv_npos` if not found or the view is empty
  */
-LIB_STV_FN size_t stv_firstCharClass(strview stv, stv_charClassFn handle, bool invert);
+LIB_STV_FN size_t stv_firstIf(strview stv, stv_charClassFn handle, bool invert);
 
 #ifdef LIB_STV_GENERIC
     /**
-     * @brief Find the last occurrence of a character, charset member, or character class (generic)
+     * @brief Generic last-index search: dispatches on the type of `target`
      *
-     * Dispatches based on the type of `target`:
-     * - `char`:            calls `stv_lastChar()`
-     * - `strview`:         calls `stv_lastCharset()`
-     * - `stv_charClassFn`: calls `stv_lastCharClass()`
+     * The second argument is inspected with `_Generic`:
+     * - `int` / `char`      → `stv_lastCh(stv, ch, invert)`
+     * - `stv_charClassFn`   → `stv_lastIf(stv, handle, invert)`
+     * - `strview`           → `stv_lastChs(stv, charset, invert)`
+     *
+     * Any other type is a compile-time error.
+     *
+     * Searches from the end of the view towards the beginning.
      *
      * @param stv    The string view to search
-     * @param target A `char`, a `strview` charset, or a character classification function
-     * @param invert If true, search for the last character NOT matching; otherwise search for the last match
-     * @return Index of the last match, or `stv_npos` if not found or the view is empty
+     * @param target Character, classification function, or charset view
+     * @param invert If true, search for the last character that does *not* match
+     * @return Index of the last match, or `stv_npos` if not found
      */
     #define stv_lastIndex(stv, target, invert)                                                                         \
-        _Generic((target), int: stv_lastChar, strview: stv_lastCharset, stv_charClassFn: stv_lastCharClass)(           \
+        _Generic((target), int: stv_lastCh, char: stv_lastCh, stv_charClassFn: stv_lastIf, strview: stv_lastChs)(      \
             (stv), (target), (invert))
 #endif
 
@@ -587,17 +614,18 @@ LIB_STV_FN size_t stv_firstCharClass(strview stv, stv_charClassFn handle, bool i
  * @param invert If true, search for the last character NOT equal to `ch`
  * @return Index of the last match, or `stv_npos` if not found or the view is empty
  */
-LIB_STV_FN size_t stv_lastChar(strview stv, const char ch, bool invert);
+LIB_STV_FN size_t stv_lastCh(strview stv, const char ch, bool invert);
 
 /**
  * @brief Find the last occurrence of any character from a charset
  *
  * @param stv     The string view to search
- * @param charset Character set view (an empty charset always yields `stv_npos`)
+ * @param charset Character set view. An empty charset matches no characters when
+ *                `invert` is false, and matches all characters when `invert` is true.
  * @param invert  If true, search for the last character NOT in the charset
  * @return Index of the last match, or `stv_npos` if not found or the view is empty
  */
-LIB_STV_FN size_t stv_lastCharset(strview stv, strview charset, bool invert);
+LIB_STV_FN size_t stv_lastChs(strview stv, strview charset, bool invert);
 
 /**
  * @brief Find the last character that satisfies a classification function
@@ -607,13 +635,14 @@ LIB_STV_FN size_t stv_lastCharset(strview stv, strview charset, bool invert);
  * @param invert If true, search for the last character that does NOT satisfy `handle`
  * @return Index of the last match, or `stv_npos` if not found or the view is empty
  */
-LIB_STV_FN size_t stv_lastCharClass(strview stv, stv_charClassFn handle, bool invert);
+LIB_STV_FN size_t stv_lastIf(strview stv, stv_charClassFn handle, bool invert);
 
 /**
  * @brief Find the first position where two views differ (from left to right)
  *
- * Compares byte by byte from the beginning. If the views are identical (same data and length, or same content
- * and length), returns `stv_npos`. If one view is a prefix of the other, returns the length of the shorter view.
+ * Compares byte from the beginning. If the views are identical
+ * (same data and length, or same content and length), returns `stv_npos`.
+ * If one view is a prefix of the other, returns the length of the shorter view.
  * Otherwise returns the index of the first differing byte.
  *
  * @param stv_left  Left view
@@ -626,9 +655,11 @@ LIB_STV_FN size_t stv_firstDiff(strview stv_left, strview stv_right, bool nocase
 /**
  * @brief Find the last position where two views differ (from right to left)
  *
- * Compares byte by byte from the end. If the views are identical, returns `stv_npos`.
- * If one view is a suffix of the other, returns the index of the first differing byte from the right
- * (relative to the longer view). For example, `"hello"` and `"ello"` differ at index 4 of the longer view.
+ * Compares bytes from the end towards the beginning. If the views are identical
+ * (same data and length, or same content and length), returns `stv_npos`.
+ * If one view is a suffix of the other, the index of the last byte in the
+ * longer view that is not part of the shorter view is returned.
+ * Otherwise it returns the index of the last differing byte.
  *
  * @param stv_left  Left view
  * @param stv_right Right view
@@ -637,40 +668,67 @@ LIB_STV_FN size_t stv_firstDiff(strview stv_left, strview stv_right, bool nocase
  */
 LIB_STV_FN size_t stv_lastDiff(strview stv_left, strview stv_right, bool nocase);
 
+/**
+ * @brief Return the length of the view in bytes
+ *
+ * Returns 0 if `stv.data` is NULL; otherwise returns `stv.len` unchanged.
+ * The NULL‑check mirrors the empty‑view semantics used throughout the library.
+ *
+ * @param stv String view
+ * @return Length of the view in bytes, or 0 for a null view
+ */
+LIB_STV_FN size_t stv_length(strview stv);
+
 #ifdef LIB_STV_GENERIC
     /**
-     * @brief Count occurrences based on the type of target (generic)
+     * @brief Generic character counter: dispatches on the type of `target`
      *
-     * Dispatches to:
-     * - `stv_countChar()`   if `target` is a `char`
-     * - `stv_countSubstr()` if `target` is a `strview`
-     * - `stv_countIf()`     if `target` is a `stv_charClassFn`
+     * The second argument is inspected with `_Generic`:
+     * - `int` / `char`      → `stv_countCh(stv, ch)`
+     * - `stv_charClassFn`   → `stv_countIf(stv, handle)`
+     * - `strview`           → `stv_countChs(stv, charset)`
      *
-     * @param stv    The string view to examine
-     * @param target A `char`, a substring to count, or a character classification function
-     * @return Number of occurrences (see individual functions for details on empty views / `stv_npos`)
+     * Any other type is a compile-time error.
+     *
+     * @param stv    String view to examine
+     * @param target Character, classification function, or charset view
+     * @return Number of matching characters, or 0 if the view is empty (or, for the
+     *         function/charset variants, if `handle`/`charset` is empty)
      */
     #define stv_count(stv, target)                                                                                     \
-        _Generic((target), int: stv_countChar, strview: stv_countSubstr, stv_charClassFn: stv_countIf)((stv), (target))
+        _Generic((target), int: stv_countCh, char: stv_countCh, stv_charClassFn: stv_countIf, strview: stv_countChs)(  \
+            (stv), (target))
 #endif
-
-/**
- * @brief Count the number of characters that satisfy a classification function
- *
- * @param stv    String view to examine
- * @param handle Character classification function (e.g., `isdigit`). If NULL, the function returns `stv_npos`.
- * @return Number of matching characters, or `stv_npos` if the view is empty or `handle` is NULL
- */
-LIB_STV_FN size_t stv_countIf(strview stv, stv_charClassFn handle);
 
 /**
  * @brief Count the occurrences of a specific character
  *
  * @param stv String view to examine
  * @param ch  Character to count
- * @return Number of occurrences of `ch`, or `stv_npos` if the view is empty
+ * @return Number of occurrences of `ch`, or `0` if the view is empty
  */
-LIB_STV_FN size_t stv_countChar(strview stv, const char ch);
+LIB_STV_FN size_t stv_countCh(strview stv, char ch);
+
+/**
+ * @brief Count how many characters in a view appear in a given charset
+ *
+ * If `charset` is empty the result is 0.
+ *
+ * @param stv     String view to examine
+ * @param charset Character set view containing the characters to count
+ * @return Number of characters in `stv` that also appear in `charset`,
+ *         or 0 if `stv` is empty or `charset` is empty
+ */
+LIB_STV_FN size_t stv_countChs(strview stv, strview charset);
+
+/**
+ * @brief Count the number of characters that satisfy a classification function
+ *
+ * @param stv    String view to examine
+ * @param handle Character classification function (e.g., `isdigit`). If NULL, the function returns `0`.
+ * @return Number of matching characters, or `0` if the view is empty or `handle` is NULL
+ */
+LIB_STV_FN size_t stv_countIf(strview stv, stv_charClassFn handle);
 
 /**
  * @brief Count non‑overlapping occurrences of a substring in the view
@@ -682,22 +740,55 @@ LIB_STV_FN size_t stv_countChar(strview stv, const char ch);
  * @param stv The string view to search in
  * @param sub The substring to count (may be empty)
  * @return Number of non‑overlapping occurrences; returns `stv.len` if `sub` is empty,
- *         or `stv_npos` if `stv` is empty
+ *         or `0` if `stv` is empty
  */
 LIB_STV_FN size_t stv_countSubstr(strview stv, strview sub);
 
 #ifdef LIB_STV_GENERIC
     /**
-     * @brief Check if every character satisfies a condition (generic)
+     * @brief Generic “every character matches” test: dispatches on the type of `target`
      *
-     * Dispatches to `stv_everyChar()` or `stv_everyIf()` based on the type of `target`.
+     * The second argument is inspected with `_Generic`:
+     * - `int` / `char`      → `stv_everyCh(stv, ch)`
+     * - `stv_charClassFn`   → `stv_everyIf(stv, handle)`
+     * - `strview`           → `stv_everyChs(stv, charset)`
      *
-     * @param stv    The string view to examine
-     * @param target A `char` to compare, or a `stv_charClassFn` classification function
-     * @return true if all characters satisfy the condition, false otherwise (empty view returns false)
+     * Any other type is a compile-time error.
+     *
+     * An empty view always yields false.
+     *
+     * @param stv    String view to examine
+     * @param target Character, classification function, or charset view
+     * @return true if the view is non-empty and every character matches; false otherwise
      */
-    #define stv_every(stv, target) _Generic((target), int: stv_everyChar, stv_charClassFn: stv_everyIf)((stv), (target))
+    #define stv_every(stv, target)                                                                                     \
+        _Generic((target), int: stv_everyCh, char: stv_everyCh, stv_charClassFn: stv_everyIf, strview: stv_everyChs)(  \
+            (stv), (target))
 #endif
+
+/**
+ * @brief Check if every character in the view equals a given character
+ *
+ * An empty view always returns false.
+ *
+ * @param stv String view to examine
+ * @param ch  Character to compare against
+ * @return true if the view is non‑empty and all characters equal `ch`; false otherwise
+ */
+LIB_STV_FN bool stv_everyCh(strview stv, char ch);
+
+/**
+ * @brief Check whether every character in the view belongs to a given charset
+ *
+ * An empty view always returns false. An empty `charset` also yields false
+ * (there is no character to match against).
+ *
+ * @param stv     String view to examine
+ * @param charset Character set view
+ * @return true if the view is non‑empty and every character belongs to `charset`;
+ *         false otherwise
+ */
+LIB_STV_FN bool stv_everyChs(strview stv, strview charset);
 
 /**
  * @brief Check if every character in the view satisfies a classification function
@@ -710,29 +801,45 @@ LIB_STV_FN size_t stv_countSubstr(strview stv, strview sub);
  */
 LIB_STV_FN bool stv_everyIf(strview stv, stv_charClassFn handle);
 
-/**
- * @brief Check if every character in the view equals a given character
- *
- * An empty view always returns false.
- *
- * @param stv String view to examine
- * @param ch  Character to compare against
- * @return true if the view is non‑empty and all characters equal `ch`; false otherwise
- */
-LIB_STV_FN bool stv_everyChar(strview stv, const char ch);
-
 #ifdef LIB_STV_GENERIC
     /**
-     * @brief Check if at least one character satisfies a condition (generic)
+     * @brief Generic “at least one character matches” test: dispatches on the type of `target`
      *
-     * Dispatches to `stv_someChar()` or `stv_someIf()` based on the type of `target`.
+     * The second argument is inspected with `_Generic`:
+     * - `int` / `char`      → `stv_someCh(stv, ch)`
+     * - `stv_charClassFn`   → `stv_someIf(stv, handle)`
+     * - `strview`           → `stv_someChs(stv, charset)`
      *
-     * @param stv    The string view to examine
-     * @param target A `char` to search for, or a `stv_charClassFn` classification function
-     * @return true if at least one character satisfies the condition, false otherwise (empty view returns false)
+     * Any other type is a compile-time error.
+     *
+     * @param stv    String view to examine
+     * @param target Character, classification function, or charset view
+     * @return true if the view is non-empty and at least one character matches;
+     *         false otherwise
      */
-    #define stv_some(stv, target) _Generic((target), int: stv_someChar, stv_charClassFn: stv_someIf)((stv), (target))
+    #define stv_some(stv, target)                                                                                      \
+        _Generic((target), int: stv_someCh, char: stv_someCh, stv_charClassFn: stv_someIf, strview: stv_someChs)(      \
+            (stv), (target))
 #endif
+
+/**
+ * @brief Check if at least one occurrence of a given character exists in the view
+ *
+ * @param stv String view to examine
+ * @param ch  Character to search for
+ * @return true if the view is non‑empty and contains `ch`; false otherwise
+ */
+LIB_STV_FN bool stv_someCh(strview stv, char ch);
+
+/**
+ * @brief Check whether at least one character in the view belongs to a given charset
+ *
+ * @param stv     String view to examine
+ * @param charset Character set view
+ * @return true if the view is non‑empty and at least one character belongs to
+ *         `charset`; false otherwise
+ */
+LIB_STV_FN bool stv_someChs(strview stv, strview charset);
 
 /**
  * @brief Check if at least one character in the view satisfies a classification function
@@ -744,67 +851,34 @@ LIB_STV_FN bool stv_everyChar(strview stv, const char ch);
 LIB_STV_FN bool stv_someIf(strview stv, stv_charClassFn handle);
 
 /**
- * @brief Check if at least one occurrence of a given character exists in the view
- *
- * @param stv String view to examine
- * @param ch  Character to search for
- * @return true if the view is non‑empty and contains `ch`; false otherwise
- */
-LIB_STV_FN bool stv_someChar(strview stv, const char ch);
-
-/**
  * @brief Check if a view starts with a given prefix
  *
  * @param stv_text The text view to examine
  * @param stv_pat  The prefix pattern (an empty pattern always returns true)
+ * @param nocase   If true, character comparisons ignore ASCII letter case
  * @return true if `stv_text` starts with `stv_pat`, false otherwise
  */
-LIB_STV_FN bool stv_startsWith(strview stv_text, strview stv_pat);
-
-/**
- * @brief Check if a view starts with a given prefix, ignoring case
- *
- * @param stv_text The text view to examine
- * @param stv_pat  The prefix pattern (an empty pattern always returns true)
- * @return true if `stv_text` starts with `stv_pat` (case‑insensitive), false otherwise
- */
-LIB_STV_FN bool stv_startsWithNocase(strview stv_text, strview stv_pat);
+LIB_STV_FN bool stv_startsWith(strview stv_text, strview stv_pat, bool nocase);
 
 /**
  * @brief Check if a view ends with a given suffix
  *
  * @param stv_text The text view to examine
  * @param stv_pat  The suffix pattern (an empty pattern always returns true)
+ * @param nocase   If true, character comparisons ignore ASCII letter case
  * @return true if `stv_text` ends with `stv_pat`, false otherwise
  */
-LIB_STV_FN bool stv_endsWith(strview stv_text, strview stv_pat);
-
-/**
- * @brief Check if a view ends with a given suffix, ignoring case
- *
- * @param stv_text The text view to examine
- * @param stv_pat  The suffix pattern (an empty pattern always returns true)
- * @return true if `stv_text` ends with `stv_pat` (case‑insensitive), false otherwise
- */
-LIB_STV_FN bool stv_endsWithNocase(strview stv_text, strview stv_pat);
+LIB_STV_FN bool stv_endsWith(strview stv_text, strview stv_pat, bool nocase);
 
 /**
  * @brief Check if a view contains a given substring
  *
  * @param stv_text The text view
  * @param stv_sub  The pattern to search for (an empty pattern is considered as contained)
+ * @param nocase   If true, character comparisons ignore ASCII letter case
  * @return true if `stv_sub` appears in `stv_text`, false otherwise
  */
-LIB_STV_FN bool stv_contains(strview stv_text, strview stv_sub);
-
-/**
- * @brief Check if a view contains a given substring, ignoring case
- *
- * @param stv_text The text view
- * @param stv_sub  The pattern to search for (an empty pattern is considered as contained)
- * @return true if `stv_sub` appears in `stv_text` (case‑insensitive), false otherwise
- */
-LIB_STV_FN bool stv_containsNocase(strview stv_text, strview stv_sub);
+LIB_STV_FN bool stv_contains(strview stv_text, strview stv_sub, bool nocase);
 
 /**
  * @brief Check if two views have identical content (byte‑by‑byte comparison)
@@ -816,13 +890,14 @@ LIB_STV_FN bool stv_containsNocase(strview stv_text, strview stv_sub);
 LIB_STV_FN bool stv_equal(strview stv_left, strview stv_right);
 
 /**
- * @brief Check if two views have identical content, ignoring case
+ * @brief Check if two views have identical content, optionally ignoring ASCII case
  *
  * @param stv_left  Left view
  * @param stv_right Right view
- * @return true if contents are equal ignoring ASCII letter case, false otherwise
+ * @param nocase    If true, ASCII letter case is ignored during comparison
+ * @return true if contents are equal, false otherwise
  */
-LIB_STV_FN bool stv_equalNocase(strview stv_left, strview stv_right);
+LIB_STV_FN bool stv_equalEx(strview stv_left, strview stv_right, bool nocase);
 
 /**
  * @brief Check if two views reference exactly the same underlying data (same pointer and length)
@@ -851,15 +926,18 @@ LIB_STV_FN bool stv_empty(strview stv);
 LIB_STV_FN int stv_compare(strview stv_left, strview stv_right);
 
 /**
- * @brief Compare two string views lexicographically, ignoring case
+ * @brief Compare two string views lexicographically, optionally ignoring ASCII case
  *
- * Compares byte by byte, ignoring ASCII letter case (both sides are converted to lowercase for comparison).
+ * Compares the views byte by byte in the same way as `stv_compare()`, but when
+ * `nocase` is true, ASCII letters are folded to lowercase before comparison
+ * (e.g., `'A'` and `'a'` are considered equal).
  *
  * @param stv_left  Left view
  * @param stv_right Right view
- * @return Negative if `left < right`, 0 if equal, positive if `left > right`
+ * @param nocase    If true, ASCII letter case is ignored during comparison
+ * @return Negative if `stv_left < stv_right`, 0 if equal, positive if `stv_left > stv_right`
  */
-LIB_STV_FN int stv_compareNocase(strview stv_left, strview stv_right);
+LIB_STV_FN int stv_compareEx(strview stv_left, strview stv_right, bool nocase);
 
 /**
  * @brief Get the first character of the view
@@ -893,27 +971,30 @@ LIB_STV_FN char stv_at(strview stv, size_t idx);
  * @brief Iterate over each character of a string view
  *
  * Calls the provided callback for each character in the view, passing the character,
- * its index, and the original view for context.
+ * its zero‑based index, and the user‑provided `ctx` pointer.
  *
  * If the view is empty or `callback` is NULL, the callback is never invoked.
  *
  * @param stv      The string view to iterate over
  * @param callback Callback function of type `stv_forEachFn`
+ * @param ctx      User‑provided context pointer passed through to the callback
  */
-LIB_STV_FN void stv_forEach(strview stv, stv_forEachFn callback);
+LIB_STV_FN void stv_forEach(strview stv, stv_forEachFn callback, void* ctx);
 
 /**
  * @brief Iterate over each character of a string view in reverse order
  *
- * Calls the provided callback for each character from the last to the first, passing the character,
- * its index, and the original view for context.
+ * Calls the provided callback for each character from the last to the first,
+ * passing the character, its zero‑based index (descending), and the user‑provided
+ * `ctx` pointer.
  *
  * If the view is empty or `callback` is NULL, the callback is never invoked.
  *
  * @param stv      The string view to iterate over
  * @param callback Callback function of type `stv_forEachFn`
+ * @param ctx      User‑provided context pointer passed through to the callback
  */
-LIB_STV_FN void stv_forEachRev(strview stv, stv_forEachFn callback);
+LIB_STV_FN void stv_forEachRev(strview stv, stv_forEachFn callback, void* ctx);
 
 /**
  * @brief Swap the contents of two string views
@@ -952,26 +1033,30 @@ LIB_STV_FN size_t stv_hash(strview stv);
 LIB_STV_FN size_t stv_hash_FNV1a(strview stv);
 
 /**
- * @brief Copy the string view into a null‑terminated C string buffer
+ * @brief Write a string view into a character buffer as a null‑terminated C string
+ *
+ * Copies at most `size - 1` bytes from `stv` into `mem`, appends a null terminator,
+ * and optionally applies case conversion and byte reversal controlled by `opts`.
+ *
+ * Overflow behaviour:
+ * - If `stv_Truncate` is set, the output is silently truncated to fit the buffer.
+ * - Otherwise the function returns `NULL` without writing anything.
+ *
+ * Transformation options (see `stv_cstrOptions` for details):
+ * - `stv_ToUpper` / `stv_ToLower`: convert ASCII letters; when both are set the
+ *   result is swap‑case.
+ * - `stv_Reverse`: reverse the byte order of the output.
+ * - `stv_ViewReverse`: read the source view from its last byte to its first.
+ * - `stv_JoinReverse` has no effect here.
  *
  * @param stv  Source string view
  * @param mem  Destination buffer
- * @param size Buffer size in bytes
- * @return `mem` if the buffer is large enough to hold the view content and the null terminator; otherwise NULL
+ * @param size Size of `mem` in bytes (must be at least 1)
+ * @param opts Bitwise combination of `stv_cstrOptions`
+ * @return `mem` on success; `NULL` if `mem` is NULL, `size` is 0, or the output
+ *         would not fit and `stv_Truncate` is not set
  */
-LIB_STV_FN char* stv_cstr(strview stv, char* mem, size_t size);
-
-/**
- * @brief Copy the string view into a null‑terminated C string buffer with optional transformations
- *
- * @param stv  Source string view
- * @param mem  Destination buffer
- * @param size Buffer size in bytes
- * @param opts Bitwise combination of `stv_cstrOptions` to apply
- * @return `mem` if the buffer is large enough to hold the view content and the null terminator;
- *         otherwise NULL (unless `stv_Truncate` is set, in which case the result is truncated to fit)
- */
-LIB_STV_FN char* stv_opt_cstr(strview stv, char* mem, size_t size, stv_cstrOptions opts);
+LIB_STV_FN char* stv_cstr(strview stv, char* mem, size_t size, stv_cstrOptions opts);
 
 /**
  * @brief Join an array of string views with a separator into a buffer
@@ -987,10 +1072,11 @@ LIB_STV_FN char* stv_opt_cstr(strview stv, char* mem, size_t size, stv_cstrOptio
  * @param size    Size of the destination buffer in bytes
  * @param sep     Separator to insert between elements (may be empty)
  * @param opts    Bitwise combination of `stv_cstrOptions` to apply to each element
- * @return `mem` on success; NULL if the buffer is too small or `mem` is NULL
+ * @return `mem` on success; `NULL` if `mem` is NULL, `size` is 0, or the buffer is
+ *         too small and `stv_Truncate` is not set. When `stv_Truncate` is set, the
+ *         output is truncated to fit and `mem` is returned.
  */
-LIB_STV_FN char* stv_opt_join(strview stv_arr[], size_t arr_len, char* mem, size_t size, strview sep,
-                              stv_cstrOptions opts);
+LIB_STV_FN char* stv_join(strview stv_arr[], size_t arr_len, char* mem, size_t size, strview sep, stv_cstrOptions opts);
 
 /**
  * @brief Convert a character to its numeric digit value (0‑35)
@@ -1078,22 +1164,28 @@ LIB_STV_FN uintmax_t stv_parseUnum(strview stv, int base, strview* remaining);
  *
  * Expands to a compound literal array of `strview` and its element count.
  * Designed for use with functions that take a `strview` array and a length,
- * such as `stv_opt_join()`.
+ * such as `stv_join()`.
  *
  * Usage:
  * ```
  * strview sv1 = stv_literal("a"), sv2 = stv_literal("b");
- * stv_opt_join(stv_LIST(sv1, sv2), mem, size, sep, opts);
+ * stv_join(stv_LIST(sv1, sv2), mem, size, sep, opts);
  * ```
  *
  * @param ... Variadic list of `strview` expressions
  */
-#define stv_LIST(...) ((strview[]){__VA_ARGS__}), (sizeof((strview[]){__VA_ARGS__}) / sizeof(strview))
+#ifndef __cplusplus
+    #define stv_LIST(...) ((strview[]){__VA_ARGS__}), (sizeof((strview[]){__VA_ARGS__}) / sizeof(strview))
+#endif
 
 /**
  * @brief Helper macro for `printf`‑style formatting of a string view
  *
  * If the view length exceeds `INT_MAX`, the length parameter is capped at `INT_MAX`.
+ *
+ * @note The `stv` argument is evaluated multiple times during macro expansion
+ *       (once per `stv_empty` / `.len` / `.data` use). Pass a simple variable or
+ *       a `strview` lvalue, never an expression with side effects.
  *
  * Example usage:
  * ```
@@ -1116,15 +1208,36 @@ LIB_STV_FN uintmax_t stv_parseUnum(strview stv, int base, strview* remaining);
 
 #ifdef LIB_STV_IMPL
 
+    #define stv_impl_length(stv)      ((stv).data == nullptr ? 0 : (stv).len)
+    #define stv_impl_empty(stv)       ((stv).data == nullptr || (stv).len == 0)
+    #define stv_impl_same(stv1, stv2) (((stv1).data == (stv2).data) && ((stv1).len == (stv2).len))
+    #define stv_impl_min(val1, val2)  ((val1) > (val2) ? (val2) : (val1))
+    #define stv_impl_max(val1, val2)  ((val1) < (val2) ? (val2) : (val1))
+
+    #define stv_impl_init_charset(name)                                                                                \
+        unsigned char name[(UCHAR_MAX + CHAR_BIT) / CHAR_BIT] = {0};                                                   \
+        for (size_t idx = 0; idx < charset.len; idx++) {                                                               \
+            const unsigned char ch = charset.data[idx];                                                                \
+            name[ch / CHAR_BIT] |= (1u << ch % CHAR_BIT);                                                              \
+        }
+    #define stv_impl_inchs(ch, chs) ((chs[(ch) / CHAR_BIT] & (1u << (ch) % CHAR_BIT)) != 0)
+
+    #define stv_impl_nocase(ch)                                                                                        \
+        do {                                                                                                           \
+            if (nocase && (ch) >= 'A' && (ch) <= 'Z') {                                                                \
+                (ch) |= 32;                                                                                            \
+            }                                                                                                          \
+        } while (0)
+
 LIB_STV_FN strview stv_new(const char* c_str) {
     return stv_create(c_str, '\0', stv_npos);
 }
 
 LIB_STV_FN strview stv_create(const char* str, unsigned char endchar, size_t maxlen) {
-    size_t len = 0;
     if (str == nullptr) {
         return stv_nullstv;
     }
+    size_t len = 0;
     while (len < maxlen && (unsigned char)str[len] != endchar) {
         len++;
     }
@@ -1142,50 +1255,42 @@ LIB_STV_FN strview stv_slice(strview stv, size_t begin_pos, size_t end_pos) {
 }
 
 LIB_STV_FN strview stv_removeStart(strview stv, size_t len) {
+    if (len >= stv.len) {
+        return stv_nullstv;
+    }
     return stv_slice(stv, len, stv_end);
 }
 
 LIB_STV_FN strview stv_removeEnd(strview stv, size_t len) {
+    if (len >= stv.len) {
+        return stv_nullstv;
+    }
     return stv_slice(stv, stv_begin, stv.len - len);
 }
 
-LIB_STV_FN strview stv_removePrefix(strview stv, strview prefix) {
-    if (stv_startsWith(stv, prefix)) {
+LIB_STV_FN strview stv_removePrefix(strview stv, strview prefix, bool nocase) {
+    if (stv_startsWith(stv, prefix, nocase)) {
         return stv_slice(stv, prefix.len, stv_end);
     }
     return stv;
 }
 
-LIB_STV_FN strview stv_removePrefixNocase(strview stv, strview prefix) {
-    if (stv_startsWithNocase(stv, prefix)) {
-        return stv_slice(stv, prefix.len, stv_end);
-    }
-    return stv;
-}
-
-LIB_STV_FN strview stv_removeSuffix(strview stv, strview suffix) {
-    if (stv_endsWith(stv, suffix)) {
+LIB_STV_FN strview stv_removeSuffix(strview stv, strview suffix, bool nocase) {
+    if (stv_endsWith(stv, suffix, nocase)) {
         return stv_slice(stv, stv_begin, stv.len - suffix.len);
     }
     return stv;
 }
 
-LIB_STV_FN strview stv_removeSuffixNocase(strview stv, strview suffix) {
-    if (stv_endsWithNocase(stv, suffix)) {
-        return stv_slice(stv, stv_begin, stv.len - suffix.len);
-    }
-    return stv;
-}
-
-LIB_STV_FN strview stv_split(strview stv, strview sep, bool nocase, strview* remaining) {
-    if (stv_empty(stv)) {
+LIB_STV_FN strview stv_split(strview stv, strview sep, strview* remaining, bool nocase) {
+    if (stv_impl_empty(stv)) {
         if (remaining) {
             *remaining = stv;
         }
-        return stv;
+        return stv_nullstv;
     }
 
-    const bool   empty_sep = stv_empty(sep);
+    const bool   empty_sep = stv_impl_empty(sep);
     const size_t idx       = empty_sep ? 1 : stv_search(stv, sep, nocase);
     const size_t len       = empty_sep ? 0 : sep.len;
     const bool   split_end = (idx == stv_npos);
@@ -1197,14 +1302,14 @@ LIB_STV_FN strview stv_split(strview stv, strview sep, bool nocase, strview* rem
 }
 
 LIB_STV_FN strview stv_splitLines(strview stv, strview* remaining) {
-    if (stv_empty(stv)) {
+    if (stv_impl_empty(stv)) {
         if (remaining) {
             *remaining = stv;
         }
-        return stv;
+        return stv_nullstv;
     }
 
-    const size_t idx = stv_firstCharset(stv, stv_literal("\r\n"), false);
+    const size_t idx = stv_firstChs(stv, stv_literal("\r\n"), false);
     if (idx == stv_npos) {
         if (remaining) {
             *remaining = stv_nullstv;
@@ -1223,14 +1328,14 @@ LIB_STV_FN strview stv_splitLines(strview stv, strview* remaining) {
 }
 
 LIB_STV_FN strview stv_splitWords(strview stv, strview* remaining) {
-    if (stv_empty(stv)) {
+    if (stv_impl_empty(stv)) {
         if (remaining) {
             *remaining = stv;
         }
-        return stv;
+        return stv_nullstv;
     }
 
-    const size_t word_start = stv_firstCharset(stv, stv_whitespace, true);
+    const size_t word_start = stv_firstChs(stv, stv_whitespace, true);
     if (word_start == stv_npos) {
         if (remaining) {
             *remaining = stv_nullstv;
@@ -1239,7 +1344,7 @@ LIB_STV_FN strview stv_splitWords(strview stv, strview* remaining) {
     }
 
     const strview tail      = stv_slice(stv, word_start, stv_end);
-    const size_t  idx       = stv_firstCharset(tail, stv_whitespace, false);
+    const size_t  idx       = stv_firstChs(tail, stv_whitespace, false);
     const size_t  word_end  = word_start + ((idx == stv_npos) ? tail.len : idx);
     const bool    split_end = (word_end >= stv.len);
 
@@ -1250,10 +1355,10 @@ LIB_STV_FN strview stv_splitWords(strview stv, strview* remaining) {
 }
 
 LIB_STV_FN strview stv_beforeFirstDelim(strview stv, strview delim) {
-    if (stv_empty(stv)) {
+    if (stv_impl_empty(stv)) {
         return stv;
     }
-    if (stv_empty(delim)) {
+    if (stv_impl_empty(delim)) {
         return stv_nullstv;
     }
     const size_t pos = stv_search(stv, delim, false);
@@ -1261,18 +1366,18 @@ LIB_STV_FN strview stv_beforeFirstDelim(strview stv, strview delim) {
 }
 
 LIB_STV_FN strview stv_beforeLastDelim(strview stv, strview delim) {
-    if (stv_empty(stv)) {
+    if (stv_impl_empty(stv)) {
         return stv;
     }
-    if (stv_empty(delim)) {
+    if (stv_impl_empty(delim)) {
         return stv_nullstv;
     }
-    const size_t pos = stv_rev_search(stv, delim, false);
+    const size_t pos = stv_searchRev(stv, delim, false);
     return stv_slice(stv, stv_begin, pos);
 }
 
 LIB_STV_FN strview stv_afterFirstDelim(strview stv, strview delim) {
-    if (stv_empty(stv) || stv_empty(delim)) {
+    if (stv_impl_empty(stv) || stv_impl_empty(delim)) {
         return stv;
     }
     const size_t pos = stv_search(stv, delim, false);
@@ -1283,10 +1388,10 @@ LIB_STV_FN strview stv_afterFirstDelim(strview stv, strview delim) {
 }
 
 LIB_STV_FN strview stv_afterLastDelim(strview stv, strview delim) {
-    if (stv_empty(stv) || stv_empty(delim)) {
+    if (stv_impl_empty(stv) || stv_impl_empty(delim)) {
         return stv;
     }
-    const size_t pos = stv_rev_search(stv, delim, false);
+    const size_t pos = stv_searchRev(stv, delim, false);
     if (pos == stv_npos) {
         return stv_nullstv;
     }
@@ -1298,19 +1403,19 @@ LIB_STV_FN strview stv_trimChs(strview stv, strview charset) {
 }
 
 LIB_STV_FN strview stv_trimStartChs(strview stv, strview charset) {
-    if (stv_empty(stv) || stv_empty(charset)) {
+    if (stv_impl_empty(stv) || stv_impl_empty(charset)) {
         return stv;
     }
-    bool chs[UCHAR_MAX + 1] = {0};
-    for (size_t idx = 0; idx < charset.len; idx++) {
-        chs[(unsigned char)charset.data[idx]] = true;
-    }
+
+    stv_impl_init_charset(cbm);
+
     const char* end_pos = stv.data + stv.len;
-    const char* ch      = stv.data;
+    const char* ch_pos  = stv.data;
     size_t      tc      = 0;
-    while (ch < end_pos) {
-        if (chs[(unsigned char)*ch]) {
-            ch++, tc++;
+    while (ch_pos < end_pos) {
+        const unsigned char ch = *ch_pos;
+        if (stv_impl_inchs(ch, cbm)) {
+            ch_pos++, tc++;
         } else {
             break;
         }
@@ -1319,19 +1424,18 @@ LIB_STV_FN strview stv_trimStartChs(strview stv, strview charset) {
 }
 
 LIB_STV_FN strview stv_trimEndChs(strview stv, strview charset) {
-    if (stv_empty(stv) || stv_empty(charset)) {
+    if (stv_impl_empty(stv) || stv_impl_empty(charset)) {
         return stv;
     }
-    bool chs[UCHAR_MAX + 1] = {0};
-    for (size_t idx = 0; idx < charset.len; idx++) {
-        chs[(unsigned char)charset.data[idx]] = true;
-    }
+
+    stv_impl_init_charset(cbm);
+
     const char* start_pos = stv.data;
-    const char* ch        = stv.data + stv.len;
+    const char* ch_pos    = stv.data + stv.len;
     size_t      tc        = 0;
-    while (ch > start_pos) {
-        ch--;
-        if (chs[(unsigned char)*ch]) {
+    while (ch_pos > start_pos) {
+        const unsigned char ch = *(--ch_pos);
+        if (stv_impl_inchs(ch, cbm)) {
             tc++;
         } else {
             break;
@@ -1345,15 +1449,16 @@ LIB_STV_FN strview stv_trimIf(strview stv, stv_charClassFn handle) {
 }
 
 LIB_STV_FN strview stv_trimStartIf(strview stv, stv_charClassFn handle) {
-    if (stv_empty(stv) || handle == nullptr) {
+    if (stv_impl_empty(stv) || handle == nullptr) {
         return stv;
     }
     const char* end_pos = stv.data + stv.len;
-    const char* ch      = stv.data;
+    const char* ch_pos  = stv.data;
     size_t      tc      = 0;
-    while (ch < end_pos) {
-        if (handle(*ch)) {
-            ch++, tc++;
+    while (ch_pos < end_pos) {
+        const unsigned char ch = *ch_pos;
+        if (handle(ch)) {
+            ch_pos++, tc++;
         } else {
             break;
         }
@@ -1362,15 +1467,15 @@ LIB_STV_FN strview stv_trimStartIf(strview stv, stv_charClassFn handle) {
 }
 
 LIB_STV_FN strview stv_trimEndIf(strview stv, stv_charClassFn handle) {
-    if (stv_empty(stv) || handle == nullptr) {
+    if (stv_impl_empty(stv) || handle == nullptr) {
         return stv;
     }
     const char* start_pos = stv.data;
-    const char* ch        = stv.data + stv.len;
+    const char* ch_pos    = stv.data + stv.len;
     size_t      tc        = 0;
-    while (ch > start_pos) {
-        ch--;
-        if (handle(*ch)) {
+    while (ch_pos > start_pos) {
+        const unsigned char ch = *(--ch_pos);
+        if (handle(ch)) {
             tc++;
         } else {
             break;
@@ -1388,10 +1493,10 @@ LIB_STV_FN size_t stv_search(strview stv_text, strview stv_pat, bool nocase) {
 }
 
 LIB_STV_FN size_t stv_naiveSearch(strview stv_text, strview stv_pat, bool nocase) {
-    if (stv_empty(stv_pat)) {
+    if (stv_impl_empty(stv_pat)) {
         return 0;
     }
-    if (stv_empty(stv_text) || stv_text.len < stv_pat.len) {
+    if (stv_impl_empty(stv_text) || stv_text.len < stv_pat.len) {
         return stv_npos;
     }
 
@@ -1400,12 +1505,8 @@ LIB_STV_FN size_t stv_naiveSearch(strview stv_text, strview stv_pat, bool nocase
         size_t i;
         for (i = 0; i < stv_pat.len; i++) {
             char tch = stv_text.data[idx + i], pch = stv_pat.data[i];
-            if (nocase && tch >= 'A' && tch <= 'Z') {
-                tch |= 32;
-            }
-            if (nocase && pch >= 'A' && pch <= 'Z') {
-                pch |= 32;
-            }
+            stv_impl_nocase(tch);
+            stv_impl_nocase(pch);
             if (tch != pch) {
                 break;
             }
@@ -1418,66 +1519,64 @@ LIB_STV_FN size_t stv_naiveSearch(strview stv_text, strview stv_pat, bool nocase
 }
 
 LIB_STV_FN size_t stv_sundaySearch(strview stv_text, strview stv_pat, bool nocase) {
-    if (stv_empty(stv_pat)) {
+    if (stv_impl_empty(stv_pat)) {
         return 0;
     }
-    if (stv_empty(stv_text) || stv_text.len < stv_pat.len) {
+    if (stv_impl_empty(stv_text) || stv_text.len < stv_pat.len) {
         return stv_npos;
     }
 
-    size_t txl = stv_text.len, pal = stv_pat.len;
-    size_t shift[UCHAR_MAX + 1];
+    const size_t txl = stv_text.len, pal = stv_pat.len;
+    size_t       shift[UCHAR_MAX + 1];
     for (size_t i = 0; i <= UCHAR_MAX; i++) {
         shift[i] = pal + 1;
     }
     for (size_t i = 0; i < pal; i++) {
         char pch = stv_pat.data[i];
-        if (nocase && pch >= 'A' && pch <= 'Z') {
-            pch |= 32;
-        }
+        stv_impl_nocase(pch);
         shift[(unsigned char)pch] = pal - i;
     }
 
     size_t idx = 0;
-    for (;;) {
+    while (idx <= (txl - pal)) {
         size_t i;
         for (i = 0; i < pal; i++) {
             char tch = stv_text.data[idx + i], pch = stv_pat.data[i];
-            if (nocase && tch >= 'A' && tch <= 'Z') {
-                tch |= 32;
-            }
-            if (nocase && pch >= 'A' && pch <= 'Z') {
-                pch |= 32;
-            }
+            stv_impl_nocase(tch);
+            stv_impl_nocase(pch);
             if (tch != pch) {
-                if (idx + pal >= txl) {
-                    return stv_npos;
-                }
-                const unsigned char next_char = stv_text.data[idx + pal];
-                const size_t        skip      = shift[next_char];
-                idx += skip;
                 break;
             }
         }
-        if (i == stv_pat.len) {
+        if (i == pal) {
             return idx;
         }
+
+        if (idx + pal >= txl) {
+            return stv_npos;
+        }
+        unsigned char next_char = stv_text.data[idx + pal];
+        stv_impl_nocase(next_char);
+        const size_t skip = shift[next_char];
+        idx += skip;
     }
+
+    return stv_npos;
 }
 
-LIB_STV_FN size_t stv_rev_search(strview stv_text, strview stv_pat, bool nocase) {
+LIB_STV_FN size_t stv_searchRev(strview stv_text, strview stv_pat, bool nocase) {
     if (stv_pat.len > 4) {
-        return stv_rev_sundaySearch(stv_text, stv_pat, nocase);
+        return stv_sundaySearchRev(stv_text, stv_pat, nocase);
     } else {
-        return stv_rev_naiveSearch(stv_text, stv_pat, nocase);
+        return stv_naiveSearchRev(stv_text, stv_pat, nocase);
     }
 }
 
-LIB_STV_FN size_t stv_rev_naiveSearch(strview stv_text, strview stv_pat, bool nocase) {
-    if (stv_empty(stv_pat)) {
+LIB_STV_FN size_t stv_naiveSearchRev(strview stv_text, strview stv_pat, bool nocase) {
+    if (stv_impl_empty(stv_pat)) {
         return stv_text.len;
     }
-    if (stv_empty(stv_text) || stv_text.len < stv_pat.len) {
+    if (stv_impl_empty(stv_text) || stv_text.len < stv_pat.len) {
         return stv_npos;
     }
 
@@ -1486,12 +1585,8 @@ LIB_STV_FN size_t stv_rev_naiveSearch(strview stv_text, strview stv_pat, bool no
         size_t i;
         for (i = 0; i < stv_pat.len; i++) {
             char tch = stv_text.data[idx - 1 + i], pch = stv_pat.data[i];
-            if (nocase && tch >= 'A' && tch <= 'Z') {
-                tch |= 32;
-            }
-            if (nocase && pch >= 'A' && pch <= 'Z') {
-                pch |= 32;
-            }
+            stv_impl_nocase(tch);
+            stv_impl_nocase(pch);
             if (tch != pch) {
                 break;
             }
@@ -1503,24 +1598,22 @@ LIB_STV_FN size_t stv_rev_naiveSearch(strview stv_text, strview stv_pat, bool no
     return stv_npos;
 }
 
-LIB_STV_FN size_t stv_rev_sundaySearch(strview stv_text, strview stv_pat, bool nocase) {
-    if (stv_empty(stv_pat)) {
+LIB_STV_FN size_t stv_sundaySearchRev(strview stv_text, strview stv_pat, bool nocase) {
+    if (stv_impl_empty(stv_pat)) {
         return stv_text.len;
     }
-    if (stv_empty(stv_text) || stv_text.len < stv_pat.len) {
+    if (stv_impl_empty(stv_text) || stv_text.len < stv_pat.len) {
         return stv_npos;
     }
 
-    size_t txl = stv_text.len, pal = stv_pat.len;
-    size_t shift[UCHAR_MAX + 1];
+    const size_t txl = stv_text.len, pal = stv_pat.len;
+    size_t       shift[UCHAR_MAX + 1];
     for (size_t i = 0; i <= UCHAR_MAX; i++) {
         shift[i] = pal + 1;
     }
     for (size_t i = pal; i > 0; i--) {
         char pch = stv_pat.data[i - 1];
-        if (nocase && pch >= 'A' && pch <= 'Z') {
-            pch |= 32;
-        }
+        stv_impl_nocase(pch);
         shift[(unsigned char)pch] = i;
     }
 
@@ -1529,18 +1622,15 @@ LIB_STV_FN size_t stv_rev_sundaySearch(strview stv_text, strview stv_pat, bool n
         size_t i;
         for (i = 0; i < pal; i++) {
             char tch = stv_text.data[idx + i], pch = stv_pat.data[i];
-            if (nocase && tch >= 'A' && tch <= 'Z') {
-                tch |= 32;
-            }
-            if (nocase && pch >= 'A' && pch <= 'Z') {
-                pch |= 32;
-            }
+            stv_impl_nocase(tch);
+            stv_impl_nocase(pch);
             if (tch != pch) {
                 if (idx == 0) {
                     return stv_npos;
                 }
-                const unsigned char prev_char = stv_text.data[idx - 1];
-                const size_t        skip      = shift[prev_char];
+                unsigned char prev_char = stv_text.data[idx - 1];
+                stv_impl_nocase(prev_char);
+                const size_t skip = shift[prev_char];
                 if (idx < skip) {
                     return stv_npos;
                 }
@@ -1554,10 +1644,11 @@ LIB_STV_FN size_t stv_rev_sundaySearch(strview stv_text, strview stv_pat, bool n
     }
 }
 
-LIB_STV_FN size_t stv_firstChar(strview stv, const char ch, bool invert) {
-    if (stv_empty(stv)) {
+LIB_STV_FN size_t stv_firstCh(strview stv, const char ch, bool invert) {
+    if (stv_impl_empty(stv)) {
         return stv_npos;
     }
+
     const char*  curr = stv.data;
     const size_t len  = stv.len;
     for (size_t idx = 0; idx < len; idx++) {
@@ -1569,10 +1660,11 @@ LIB_STV_FN size_t stv_firstChar(strview stv, const char ch, bool invert) {
     return stv_npos;
 }
 
-LIB_STV_FN size_t stv_lastChar(strview stv, const char ch, bool invert) {
-    if (stv_empty(stv)) {
+LIB_STV_FN size_t stv_lastCh(strview stv, const char ch, bool invert) {
+    if (stv_impl_empty(stv)) {
         return stv_npos;
     }
+
     const char*  curr = stv.data + stv.len;
     const size_t len  = stv.len;
     for (size_t idx = 0; idx < len; idx++) {
@@ -1584,19 +1676,18 @@ LIB_STV_FN size_t stv_lastChar(strview stv, const char ch, bool invert) {
     return stv_npos;
 }
 
-LIB_STV_FN size_t stv_firstCharset(strview stv, strview charset, bool invert) {
-    if (stv_empty(stv)) {
+LIB_STV_FN size_t stv_firstChs(strview stv, strview charset, bool invert) {
+    if (stv_impl_empty(stv)) {
         return stv_npos;
     }
-    bool chs[UCHAR_MAX + 1] = {0};
-    for (size_t idx = 0; idx < charset.len; idx++) {
-        chs[(unsigned char)charset.data[idx]] = true;
-    }
+
+    stv_impl_init_charset(cbm);
 
     const char*  curr = stv.data;
     const size_t len  = stv.len;
     for (size_t idx = 0; idx < len; idx++) {
-        if (chs[(unsigned char)*curr] != invert) {
+        const unsigned char ch = *curr;
+        if (stv_impl_inchs(ch, cbm) != invert) {
             return idx;
         }
         curr++;
@@ -1604,35 +1695,34 @@ LIB_STV_FN size_t stv_firstCharset(strview stv, strview charset, bool invert) {
     return stv_npos;
 }
 
-LIB_STV_FN size_t stv_lastCharset(strview stv, strview charset, bool invert) {
-    if (stv_empty(stv)) {
+LIB_STV_FN size_t stv_lastChs(strview stv, strview charset, bool invert) {
+    if (stv_impl_empty(stv)) {
         return stv_npos;
     }
-    bool chs[UCHAR_MAX + 1] = {0};
-    for (size_t idx = 0; idx < charset.len; idx++) {
-        chs[(unsigned char)charset.data[idx]] = true;
-    }
+
+    stv_impl_init_charset(cbm);
 
     const char*  curr = stv.data + stv.len;
     const size_t len  = stv.len;
     for (size_t idx = 0; idx < len; idx++) {
-        curr--;
-        if (chs[(unsigned char)*curr] != invert) {
+        const unsigned char ch = *(--curr);
+        if (stv_impl_inchs(ch, cbm) != invert) {
             return len - idx - 1;
         }
     }
     return stv_npos;
 }
 
-LIB_STV_FN size_t stv_firstCharClass(strview stv, stv_charClassFn handle, bool invert) {
-    if (stv_empty(stv) || handle == nullptr) {
+LIB_STV_FN size_t stv_firstIf(strview stv, stv_charClassFn handle, bool invert) {
+    if (stv_impl_empty(stv) || handle == nullptr) {
         return stv_npos;
     }
+
     const char*  curr = stv.data;
     const size_t len  = stv.len;
     for (size_t idx = 0; idx < len; idx++) {
-        const bool ret = handle(*curr);
-        if (ret != invert) {
+        const unsigned char ch = *curr;
+        if ((handle(ch) != 0) != invert) {
             return idx;
         }
         curr++;
@@ -1640,16 +1730,16 @@ LIB_STV_FN size_t stv_firstCharClass(strview stv, stv_charClassFn handle, bool i
     return stv_npos;
 }
 
-LIB_STV_FN size_t stv_lastCharClass(strview stv, stv_charClassFn handle, bool invert) {
-    if (stv_empty(stv) || handle == nullptr) {
+LIB_STV_FN size_t stv_lastIf(strview stv, stv_charClassFn handle, bool invert) {
+    if (stv_impl_empty(stv) || handle == nullptr) {
         return stv_npos;
     }
+
     const char*  curr = stv.data + stv.len;
     const size_t len  = stv.len;
     for (size_t idx = 0; idx < len; idx++) {
-        curr--;
-        const bool ret = handle(*curr);
-        if (ret != invert) {
+        const unsigned char ch = *(--curr);
+        if ((handle(ch) != 0) != invert) {
             return len - idx - 1;
         }
     }
@@ -1657,27 +1747,24 @@ LIB_STV_FN size_t stv_lastCharClass(strview stv, stv_charClassFn handle, bool in
 }
 
 LIB_STV_FN size_t stv_firstDiff(strview stv_left, strview stv_right, bool nocase) {
-    if (stv_same(stv_left, stv_right)) {
+    if (stv_impl_same(stv_left, stv_right)) {
         return stv_npos;
     }
-    if (stv_empty(stv_left) && stv_empty(stv_right)) {
+    if (stv_impl_empty(stv_left) && stv_impl_empty(stv_right)) {
         return stv_npos;
     }
-    if (stv_empty(stv_left) || stv_empty(stv_right)) {
+    if (stv_impl_empty(stv_left) || stv_impl_empty(stv_right)) {
         return 0;
     }
+
     const size_t min_len   = stv_left.len > stv_right.len ? stv_right.len : stv_left.len;
     const char*  left_ptr  = stv_left.data;
     const char*  right_ptr = stv_right.data;
     for (size_t idx = 0; idx < min_len; idx++) {
-        char left_ch = *left_ptr, right_ch = *right_ptr;
-        if (nocase && left_ch >= 'A' && left_ch <= 'Z') {
-            left_ch |= 32;
-        }
-        if (nocase && right_ch >= 'A' && right_ch <= 'Z') {
-            right_ch |= 32;
-        }
-        if (left_ch != right_ch) {
+        char lch = *left_ptr, rch = *right_ptr;
+        stv_impl_nocase(lch);
+        stv_impl_nocase(rch);
+        if (lch != rch) {
             return idx;
         }
         left_ptr++, right_ptr++;
@@ -1686,55 +1773,38 @@ LIB_STV_FN size_t stv_firstDiff(strview stv_left, strview stv_right, bool nocase
 }
 
 LIB_STV_FN size_t stv_lastDiff(strview stv_left, strview stv_right, bool nocase) {
-    if (stv_same(stv_left, stv_right)) {
+    if (stv_impl_same(stv_left, stv_right)) {
         return stv_npos;
     }
-    if (stv_empty(stv_left) && stv_empty(stv_right)) {
+    if (stv_impl_empty(stv_left) && stv_impl_empty(stv_right)) {
         return stv_npos;
     }
-    if (stv_empty(stv_left) || stv_empty(stv_right)) {
-        return (stv_empty(stv_left) ? stv_right.len : stv_left.len) - 1;
+    if (stv_impl_empty(stv_left) || stv_impl_empty(stv_right)) {
+        return (stv_impl_empty(stv_left) ? stv_right.len : stv_left.len) - 1;
     }
+
     const size_t min_len   = stv_left.len < stv_right.len ? stv_left.len : stv_right.len;
     const size_t max_len   = stv_left.len > stv_right.len ? stv_left.len : stv_right.len;
     const char*  left_ptr  = stv_left.data + stv_left.len;
     const char*  right_ptr = stv_right.data + stv_right.len;
     for (size_t idx = 0; idx < min_len; idx++) {
-        left_ptr--, right_ptr--;
-        char left_ch = *left_ptr, right_ch = *right_ptr;
-        if (nocase && left_ch >= 'A' && left_ch <= 'Z') {
-            left_ch |= 32;
-        }
-        if (nocase && right_ch >= 'A' && right_ch <= 'Z') {
-            right_ch |= 32;
-        }
-        if (left_ch != right_ch) {
+        char lch = *(--left_ptr), rch = *(--right_ptr);
+        stv_impl_nocase(lch);
+        stv_impl_nocase(rch);
+        if (lch != rch) {
             return max_len - idx - 1;
         }
     }
     return (stv_left.len == stv_right.len) ? stv_npos : max_len - min_len - 1;
 }
 
-LIB_STV_FN size_t stv_countIf(strview stv, stv_charClassFn handle) {
-    if (stv_empty(stv) || handle == nullptr) {
-        return stv_npos;
-    }
-
-    size_t      sum     = 0;
-    const char* pos     = stv.data;
-    const char* end_pos = stv.data + stv.len;
-    while (pos < end_pos) {
-        if (handle(*pos)) {
-            sum++;
-        }
-        pos++;
-    }
-    return sum;
+LIB_STV_FN size_t stv_length(strview stv) {
+    return stv_impl_length(stv);
 }
 
-LIB_STV_FN size_t stv_countChar(strview stv, const char ch) {
-    if (stv_empty(stv)) {
-        return stv_npos;
+LIB_STV_FN size_t stv_countCh(strview stv, char ch) {
+    if (stv_impl_empty(stv)) {
+        return 0;
     }
 
     size_t      sum     = 0;
@@ -1749,13 +1819,52 @@ LIB_STV_FN size_t stv_countChar(strview stv, const char ch) {
     return sum;
 }
 
-LIB_STV_FN size_t stv_countSubstr(strview stv, strview sub) {
-    if (stv_empty(stv)) {
-        return stv_npos;
+LIB_STV_FN size_t stv_countChs(strview stv, strview charset) {
+    if (stv_impl_empty(stv)) {
+        return 0;
     }
-    if (stv_empty(sub)) {
+
+    stv_impl_init_charset(cbm);
+
+    size_t      sum     = 0;
+    const char* pos     = stv.data;
+    const char* end_pos = stv.data + stv.len;
+    while (pos < end_pos) {
+        const unsigned char ch = *pos;
+        if (stv_impl_inchs(ch, cbm)) {
+            sum++;
+        }
+        pos++;
+    }
+    return sum;
+}
+
+LIB_STV_FN size_t stv_countIf(strview stv, stv_charClassFn handle) {
+    if (stv_impl_empty(stv) || handle == nullptr) {
+        return 0;
+    }
+
+    size_t      sum     = 0;
+    const char* pos     = stv.data;
+    const char* end_pos = stv.data + stv.len;
+    while (pos < end_pos) {
+        const unsigned char ch = *pos;
+        if (handle(ch)) {
+            sum++;
+        }
+        pos++;
+    }
+    return sum;
+}
+
+LIB_STV_FN size_t stv_countSubstr(strview stv, strview sub) {
+    if (stv_impl_empty(stv)) {
+        return 0;
+    }
+    if (stv_impl_empty(sub)) {
         return stv.len;
     }
+
     size_t sum = 0, len = sub.len;
     for (;;) {
         const size_t pos = stv_search(stv, sub, false);
@@ -1768,38 +1877,52 @@ LIB_STV_FN size_t stv_countSubstr(strview stv, strview sub) {
     return sum;
 }
 
-LIB_STV_FN bool stv_everyIf(strview stv, stv_charClassFn handle) {
-    const size_t sum = stv_countIf(stv, handle);
-    return sum != stv_npos && sum == stv.len;
+LIB_STV_FN bool stv_everyCh(strview stv, char ch) {
+    const size_t sum = stv_countCh(stv, ch);
+    return sum != 0 && sum == stv.len;
 }
 
-LIB_STV_FN bool stv_everyChar(strview stv, const char ch) {
-    const size_t sum = stv_countChar(stv, ch);
-    return sum != stv_npos && sum == stv.len;
+LIB_STV_FN bool stv_everyChs(strview stv, strview charset) {
+    const size_t sum = stv_countChs(stv, charset);
+    return sum != 0 && sum == stv.len;
+}
+
+LIB_STV_FN bool stv_everyIf(strview stv, stv_charClassFn handle) {
+    const size_t sum = stv_countIf(stv, handle);
+    return sum != 0 && sum == stv.len;
+}
+
+LIB_STV_FN bool stv_someCh(strview stv, char ch) {
+    const size_t sum = stv_countCh(stv, ch);
+    return sum > 0;
+}
+
+LIB_STV_FN bool stv_someChs(strview stv, strview charset) {
+    const size_t sum = stv_countChs(stv, charset);
+    return sum > 0;
 }
 
 LIB_STV_FN bool stv_someIf(strview stv, stv_charClassFn handle) {
     const size_t sum = stv_countIf(stv, handle);
-    return sum != stv_npos && sum > 0;
+    return sum > 0;
 }
 
-LIB_STV_FN bool stv_someChar(strview stv, const char ch) {
-    const size_t sum = stv_countChar(stv, ch);
-    return sum != stv_npos && sum > 0;
-}
-
-LIB_STV_FN bool stv_startsWith(strview stv_text, strview stv_pat) {
-    if (stv_empty(stv_pat)) {
+LIB_STV_FN bool stv_startsWith(strview stv_text, strview stv_pat, bool nocase) {
+    if (stv_impl_empty(stv_pat)) {
         return true;
     }
-    if (stv_empty(stv_text) || stv_text.len < stv_pat.len) {
+    if (stv_impl_empty(stv_text) || stv_text.len < stv_pat.len) {
         return false;
     }
+
     const char* text_ptr = stv_text.data;
     const char* pat_ptr  = stv_pat.data;
     const char* end_ptr  = pat_ptr + stv_pat.len;
     while (pat_ptr < end_ptr) {
-        if (*text_ptr != *pat_ptr) {
+        char tch = *text_ptr, pch = *pat_ptr;
+        stv_impl_nocase(tch);
+        stv_impl_nocase(pch);
+        if (tch != pch) {
             return false;
         }
         text_ptr++, pat_ptr++;
@@ -1807,85 +1930,46 @@ LIB_STV_FN bool stv_startsWith(strview stv_text, strview stv_pat) {
     return true;
 }
 
-LIB_STV_FN bool stv_startsWithNocase(strview stv_text, strview stv_pat) {
-    if (stv_empty(stv_pat)) {
+LIB_STV_FN bool stv_endsWith(strview stv_text, strview stv_pat, bool nocase) {
+    if (stv_impl_empty(stv_pat)) {
         return true;
     }
-    if (stv_empty(stv_text) || stv_text.len < stv_pat.len) {
+    if (stv_impl_empty(stv_text) || stv_text.len < stv_pat.len) {
         return false;
     }
-    const char* text_ptr = stv_text.data;
-    const char* pat_ptr  = stv_pat.data;
-    const char* end_ptr  = pat_ptr + stv_pat.len;
-    while (pat_ptr < end_ptr) {
-        if ((*text_ptr | 32) != (*pat_ptr | 32)) {
-            return false;
-        }
-        text_ptr++, pat_ptr++;
-    }
-    return true;
-}
 
-LIB_STV_FN bool stv_endsWith(strview stv_text, strview stv_pat) {
-    if (stv_empty(stv_pat)) {
-        return true;
-    }
-    if (stv_empty(stv_text) || stv_text.len < stv_pat.len) {
-        return false;
-    }
     const char* text_ptr  = stv_text.data + stv_text.len;
     const char* pat_ptr   = stv_pat.data + stv_pat.len;
     const char* begin_ptr = stv_pat.data;
     while (pat_ptr > begin_ptr) {
-        text_ptr--, pat_ptr--;
-        if (*text_ptr != *pat_ptr) {
+        char tch = *(--text_ptr), pch = *(--pat_ptr);
+        stv_impl_nocase(tch);
+        stv_impl_nocase(pch);
+        if (tch != pch) {
             return false;
         }
     }
     return true;
 }
 
-LIB_STV_FN bool stv_endsWithNocase(strview stv_text, strview stv_pat) {
-    if (stv_empty(stv_pat)) {
-        return true;
-    }
-    if (stv_empty(stv_text) || stv_text.len < stv_pat.len) {
-        return false;
-    }
-    const char* text_ptr  = stv_text.data + stv_text.len;
-    const char* pat_ptr   = stv_pat.data + stv_pat.len;
-    const char* begin_ptr = stv_pat.data;
-    while (pat_ptr > begin_ptr) {
-        text_ptr--, pat_ptr--;
-        if ((*text_ptr | 32) != (*pat_ptr | 32)) {
-            return false;
-        }
-    }
-    return true;
-}
-
-LIB_STV_FN bool stv_contains(strview stv_text, strview stv_sub) {
-    return stv_empty(stv_sub) || stv_search(stv_text, stv_sub, false) != stv_npos;
-}
-
-LIB_STV_FN bool stv_containsNocase(strview stv_text, strview stv_sub) {
-    return stv_empty(stv_sub) || stv_search(stv_text, stv_sub, true) != stv_npos;
+LIB_STV_FN bool stv_contains(strview stv_text, strview stv_sub, bool nocase) {
+    return stv_impl_empty(stv_sub) || stv_search(stv_text, stv_sub, nocase) != stv_npos;
 }
 
 LIB_STV_FN bool stv_equal(strview stv_left, strview stv_right) {
     return stv_firstDiff(stv_left, stv_right, false) == stv_npos;
 }
 
-LIB_STV_FN bool stv_equalNocase(strview stv_left, strview stv_right) {
-    return stv_firstDiff(stv_left, stv_right, true) == stv_npos;
+LIB_STV_FN bool stv_equalEx(strview stv_left, strview stv_right, bool nocase) {
+    return stv_firstDiff(stv_left, stv_right, nocase) == stv_npos;
 }
 
 LIB_STV_FN bool stv_same(strview stv_left, strview stv_right) {
-    return (stv_left.data == stv_right.data) && (stv_left.len == stv_right.len);
+    return stv_impl_same(stv_left, stv_right);
 }
 
 LIB_STV_FN bool stv_empty(strview stv) {
-    return stv.data == nullptr || stv.len == 0;
+    return stv_impl_empty(stv);
 }
 
 LIB_STV_FN int stv_compare(strview stv_left, strview stv_right) {
@@ -1895,51 +1979,41 @@ LIB_STV_FN int stv_compare(strview stv_left, strview stv_right) {
     return c1 - c2;
 }
 
-LIB_STV_FN int stv_compareNocase(strview stv_left, strview stv_right) {
-    const size_t  pos = stv_firstDiff(stv_left, stv_right, true);
+LIB_STV_FN int stv_compareEx(strview stv_left, strview stv_right, bool nocase) {
+    const size_t  pos = stv_firstDiff(stv_left, stv_right, nocase);
     unsigned char c1  = (pos < stv_left.len) ? stv_left.data[pos] : '\0';
     unsigned char c2  = (pos < stv_right.len) ? stv_right.data[pos] : '\0';
-    if (c1 >= 'A' && c1 <= 'Z') {
-        c1 |= 32;
-    }
-    if (c2 >= 'A' && c2 <= 'Z') {
-        c2 |= 32;
-    }
+    stv_impl_nocase(c1);
+    stv_impl_nocase(c2);
     return c1 - c2;
 }
 
 LIB_STV_FN char stv_front(strview stv) {
-    return (stv_empty(stv) ? '\0' : stv.data[0]);
+    return (stv_impl_empty(stv) ? '\0' : stv.data[0]);
 }
 
 LIB_STV_FN char stv_back(strview stv) {
-    return (stv_empty(stv) ? '\0' : stv.data[stv.len - 1]);
+    return (stv_impl_empty(stv) ? '\0' : stv.data[stv.len - 1]);
 }
 
 LIB_STV_FN char stv_at(strview stv, size_t idx) {
-    return ((stv_empty(stv) || idx >= stv.len) ? '\0' : stv.data[idx]);
+    return ((stv_impl_empty(stv) || idx >= stv.len) ? '\0' : stv.data[idx]);
 }
 
-LIB_STV_FN void stv_forEach(strview stv, stv_forEachFn callback) {
-    if (!stv_empty(stv) && callback) {
-        size_t      idx     = 0;
-        const char* pos     = stv.data;
-        const char* end_pos = stv.data + stv.len;
-        while (pos < end_pos) {
-            callback(*pos, idx, stv);
-            idx++, pos++;
+LIB_STV_FN void stv_forEach(strview stv, stv_forEachFn callback, void* ctx) {
+    if (!stv_impl_empty(stv) && callback) {
+        for (size_t idx = 0; idx < stv.len; idx++) {
+            const char ch = stv.data[idx];
+            callback(ch, idx, ctx);
         }
     }
 }
 
-LIB_STV_FN void stv_forEachRev(strview stv, stv_forEachFn callback) {
-    if (!stv_empty(stv) && callback) {
-        size_t      idx       = stv.len - 1;
-        const char* pos       = stv.data + idx;
-        const char* begin_pos = stv.data;
-        while (pos >= begin_pos) {
-            callback(*pos, idx, stv);
-            idx--, pos--;
+LIB_STV_FN void stv_forEachRev(strview stv, stv_forEachFn callback, void* ctx) {
+    if (!stv_impl_empty(stv) && callback) {
+        for (size_t idx = stv.len; idx > 0; idx--) {
+            const char ch = stv.data[idx - 1];
+            callback(ch, idx - 1, ctx);
         }
     }
 }
@@ -1957,24 +2031,22 @@ LIB_STV_FN size_t stv_hash(strview stv) {
 }
 
 LIB_STV_FN size_t stv_hash_FNV1a(strview stv) {
-    if (stv_empty(stv)) {
+    if (stv_impl_empty(stv)) {
         return 0;
     }
 
-    size_t fnv_offset_basis, fnv_prime;
-    switch (SIZE_MAX) {
-    case UINT64_MAX:
-        fnv_offset_basis = 0xcbf29ce484222325ULL, fnv_prime = 0x00000100000001b3ULL;
-        break;
-    case UINT32_MAX:
-        fnv_offset_basis = 0x811c9dc5UL, fnv_prime = 0x01000193UL;
-        break;
-    case UINT16_MAX:
-        fnv_offset_basis = 0x811cU, fnv_prime = 0x0101U;
-        break;
-    default:
-        return 0;
-    }
+    #if SIZE_MAX == UINT64_MAX
+    const size_t fnv_offset_basis = 0xcbf29ce484222325ULL;
+    const size_t fnv_prime        = 0x00000100000001b3ULL;
+    #elif SIZE_MAX == UINT32_MAX
+    const size_t fnv_offset_basis = 0x811c9dc5UL;
+    const size_t fnv_prime        = 0x01000193UL;
+    #elif SIZE_MAX == UINT16_MAX
+    const size_t fnv_offset_basis = 0x811cU;
+    const size_t fnv_prime        = 0x0101U;
+    #else
+    return 0;
+    #endif
 
     size_t hash = fnv_offset_basis;
     for (size_t i = 0; i < stv.len; i++) {
@@ -1984,103 +2056,120 @@ LIB_STV_FN size_t stv_hash_FNV1a(strview stv) {
     return hash;
 }
 
-LIB_STV_FN char* stv_cstr(strview stv, char* mem, size_t size) {
-    if (mem == nullptr || size <= stv.len) {
-        return nullptr;
-    }
-    const size_t endidx = stv_empty(stv) ? 0 : stv.len;
-    if (endidx > 0) {
-        for (size_t idx = 0; idx < endidx; idx++) {
-            mem[idx] = stv.data[idx];
-        }
-    }
-    mem[endidx] = '\0';
-    return mem;
-}
+LIB_STV_FN char* stv_cstr(strview stv, char* mem, size_t size, stv_cstrOptions opts) {
+    const bool UPPER        = (opts & stv_ToUpper);
+    const bool LOWER        = (opts & stv_ToLower);
+    const bool REVERSE      = (opts & stv_Reverse);
+    const bool TRUNCATE     = (opts & stv_Truncate);
+    const bool VIEW_REVERSE = (opts & stv_ViewReverse);
 
-LIB_STV_FN char* stv_opt_cstr(strview stv, char* mem, size_t size, stv_cstrOptions opts) {
-    const bool UPPER    = (opts & stv_ToUpper);
-    const bool LOWER    = (opts & stv_ToLower);
-    const bool REVERSE  = (opts & stv_Reverse);
-    const bool TRUNCATE = (opts & stv_Truncate);
-
-    if (mem == nullptr || size == 0 || (!TRUNCATE && size <= stv.len)) {
-        return nullptr;
-    }
-    size_t endidx = stv_empty(stv) ? 0 : stv.len;
-    if (TRUNCATE && endidx >= size) {
-        endidx = size - 1;
-    }
-    if (endidx > 0) {
-        for (size_t idx = 0, ridx = endidx - 1; idx < endidx; idx++, ridx--) {
-            char ch = stv.data[(REVERSE ? ridx : idx)];
-            if (UPPER && ch >= 'a' && ch <= 'z') {
-                ch = ch & ~32;
-            } else if (LOWER && ch >= 'A' && ch <= 'Z') {
-                ch = ch | 32;
-            }
-            mem[idx] = ch;
-        }
-    }
-    mem[endidx] = '\0';
-    return mem;
-}
-
-LIB_STV_FN char* stv_opt_join(strview stv_arr[], size_t arr_len, char* mem, size_t size, strview sep,
-                              stv_cstrOptions opts) {
-    if (mem == nullptr || size == 0 || (stv_arr == nullptr && arr_len > 0)) {
+    const bool overflow = size <= stv.len;
+    if (mem == nullptr || size == 0 || (overflow && !TRUNCATE)) {
         return nullptr;
     }
 
-    if (arr_len == 0 && size >= 1) {
+    if (stv_impl_empty(stv) || size == 1) {
         *mem = '\0';
         return mem;
     }
 
-    size_t needed = 1;
+    size_t endidx = overflow ? (size - 1) : stv.len;
+
+    for (size_t i = 0; i < endidx; i++) {
+        size_t si = VIEW_REVERSE ? (stv.len - i - 1) : i;
+        size_t di = REVERSE ? (endidx - i - 1) : i;
+
+        char ch = stv.data[si];
+        if (UPPER && ch >= 'a' && ch <= 'z') {
+            ch -= 32;
+        } else if (LOWER && ch >= 'A' && ch <= 'Z') {
+            ch += 32;
+        }
+        mem[di] = ch;
+    }
+
+    mem[endidx] = '\0';
+    return mem;
+}
+
+LIB_STV_FN char* stv_join(strview stv_arr[], size_t arr_len, char* mem, size_t size, strview sep,
+                          stv_cstrOptions opts) {
+    if (mem == nullptr || size == 0 || (stv_arr == nullptr && arr_len > 0)) {
+        return nullptr;
+    }
+
+    const bool REVERSE      = (opts & stv_Reverse);
+    const bool TRUNCATE     = (opts & stv_Truncate);
+    const bool JOIN_REVERSE = (opts & stv_JoinReverse);
+
+    const size_t sep_len    = stv_impl_length(sep);
+    size_t       needed_len = 0;
+    bool         overflow   = false;
     if (arr_len > 0) {
-        needed += sep.len * (arr_len - 1);
         for (size_t i = 0; i < arr_len; i++) {
-            needed += stv_arr[i].len;
+            const size_t len = ((i > 0) ? sep_len : 0) + stv_impl_length(stv_arr[i]);
+            if ((size - needed_len) <= len) {
+                overflow = true;
+                break;
+            }
+            needed_len += len;
         }
     }
 
-    const bool TRUNCATE = (opts & stv_Truncate);
-    if (needed > size) {
-        if (TRUNCATE) {
-            needed = size;
-        } else {
-            return nullptr;
-        }
+    if (overflow && !TRUNCATE) {
+        return nullptr;
     }
 
-    char*        ptr     = mem;
-    size_t       total   = 0;
-    const size_t sep_len = sep.len;
-    for (size_t i = 0; i < (2 * arr_len - 1); i++) {
-        size_t rem = (total < needed) ? (needed - total) : 0;
-        if (rem <= 1) {
+    size_t total_len = overflow ? (size - 1) : needed_len;
+
+    if (total_len == 0) {
+        *mem = '\0';
+        return mem;
+    }
+
+    stv_cstrOptions view_opts = (stv_cstrOptions)((opts & ~stv_Reverse) | stv_Truncate);
+
+    size_t pos     = 0;
+    size_t rem_len = total_len;
+
+    for (size_t idx = 0; idx < arr_len && rem_len > 0; idx++) {
+        const strview view     = stv_arr[(JOIN_REVERSE ? (arr_len - idx - 1) : idx)];
+        const size_t  view_len = stv_impl_length(view);
+
+        if (sep_len > 0 && idx > 0) {
+            const size_t take = stv_impl_min(rem_len, sep_len);
+            (void)stv_cstr(sep, mem + pos, take + 1, stv_Truncate);
+            pos += take, rem_len -= take;
+        }
+
+        if (rem_len == 0) {
             break;
         }
 
-        strview         sv  = (i % 2) ? sep : stv_arr[i / 2];
-        stv_cstrOptions opt = (i % 2) ? (stv_Default | TRUNCATE) : opts;
-        stv_opt_cstr(sv, ptr, size - total, opt);
-        size_t written = (sv.len < rem) ? sv.len : (rem - 1);
-        ptr += written;
-        total += written;
+        if (view_len > 0) {
+            const size_t take = stv_impl_min(rem_len, view_len);
+            (void)stv_cstr(view, mem + pos, take + 1, view_opts);
+            pos += take, rem_len -= take;
+        }
     }
 
-    if (total == size) {
-        mem[size - 1] = '\0';
+    if (REVERSE) {
+        char *left = mem, *right = mem + total_len - 1;
+        while (left < right) {
+            const char tmp = *left;
+            *left          = *right;
+            *right         = tmp;
+            left++, right--;
+        }
     }
 
+    mem[total_len] = '\0';
     return mem;
 }
 
 LIB_STV_FN intmax_t stv_parseInum(strview stv, int base, strview* remaining) {
     stv = stv_trimStartChs(stv, stv_whitespace);
-    if (stv_empty(stv)) {
+    if (stv_impl_empty(stv)) {
         if (remaining) {
             *remaining = stv;
         }
@@ -2103,10 +2192,9 @@ LIB_STV_FN intmax_t stv_parseInum(strview stv, int base, strview* remaining) {
     }
 
     if (!auto_base) {
-        const char* up = (base == 2) ? "0B" : (base == 8) ? "0O" : (base == 10) ? "0D" : (base == 16) ? "0X" : nullptr;
-        const char* lw = (base == 2) ? "0b" : (base == 8) ? "0o" : (base == 10) ? "0d" : (base == 16) ? "0x" : nullptr;
-        if (up) {
-            if (stv_startsWith(stv, stv_makestv(up, 2)) || stv_startsWith(stv, stv_makestv(lw, 2))) {
+        const char* pre = (base == 2) ? "0b" : (base == 8) ? "0o" : (base == 10) ? "0d" : (base == 16) ? "0x" : nullptr;
+        if (pre) {
+            if (stv_startsWith(stv, stv_makestv(pre, 2), true)) {
                 stv = stv_makestv(stv.data + 2, stv.len - 2);
             }
         }
@@ -2142,12 +2230,16 @@ LIB_STV_FN intmax_t stv_parseInum(strview stv, int base, strview* remaining) {
         return negative ? INTMAX_MIN : INTMAX_MAX;
     }
 
+    if (negative && (acc == (uintmax_t)INTMAX_MAX + 1)) {
+        return INTMAX_MIN;
+    }
+
     return negative ? -(intmax_t)acc : (intmax_t)acc;
 }
 
 LIB_STV_FN uintmax_t stv_parseUnum(strview stv, int base, strview* remaining) {
     stv = stv_trimStartChs(stv, stv_whitespace);
-    if (stv_empty(stv)) {
+    if (stv_impl_empty(stv)) {
         if (remaining) {
             *remaining = stv;
         }
@@ -2170,10 +2262,9 @@ LIB_STV_FN uintmax_t stv_parseUnum(strview stv, int base, strview* remaining) {
     }
 
     if (!auto_base) {
-        const char* up = (base == 2) ? "0B" : (base == 8) ? "0O" : (base == 10) ? "0D" : (base == 16) ? "0X" : nullptr;
-        const char* lw = (base == 2) ? "0b" : (base == 8) ? "0o" : (base == 10) ? "0d" : (base == 16) ? "0x" : nullptr;
-        if (up) {
-            if (stv_startsWith(stv, stv_makestv(up, 2)) || stv_startsWith(stv, stv_makestv(lw, 2))) {
+        const char* pre = (base == 2) ? "0b" : (base == 8) ? "0o" : (base == 10) ? "0d" : (base == 16) ? "0x" : nullptr;
+        if (pre) {
+            if (stv_startsWith(stv, stv_makestv(pre, 2), true)) {
                 stv = stv_makestv(stv.data + 2, stv.len - 2);
             }
         }
@@ -2220,7 +2311,7 @@ LIB_STV_FN int stv_ch2digit(char ch) {
 }
 
 LIB_STV_FN int stv_parseIntBase(strview stv, strview* remaining) {
-    if (stv_empty(stv)) {
+    if (stv_impl_empty(stv)) {
         if (remaining) {
             *remaining = stv;
         }
@@ -2231,7 +2322,7 @@ LIB_STV_FN int stv_parseIntBase(strview stv, strview* remaining) {
     size_t     num_start = 2;
     const char zero_ch   = stv.data[0];
     if (zero_ch == '0' && stv.len >= 2) {
-        const char base_ch = (stv.data[1] | 32);
+        const char base_ch = (char)((unsigned char)stv.data[1] | 32);
         if (base_ch == 'b') {
             base = 2;
         } else if (base_ch == 'o') {
@@ -2252,6 +2343,15 @@ LIB_STV_FN int stv_parseIntBase(strview stv, strview* remaining) {
     }
     return base;
 }
+
+    #undef stv_impl_length
+    #undef stv_impl_empty
+    #undef stv_impl_same
+    #undef stv_impl_min
+    #undef stv_impl_max
+    #undef stv_impl_init_charset
+    #undef stv_impl_inchs
+    #undef stv_impl_nocase
 
 #endif // LIB_STV_IMPL
 

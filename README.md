@@ -23,8 +23,8 @@ Supports **C99** and **C++11** or later.
 #include <stdio.h>
 
 int main(int argc, char* argv[]) {
-    strview myview = stv_new("This is a example string: Hello, world!");
-    myview = stv_slice(myview, stv_lastChar(myview, 'H', false), stv_end);  
+    strview myview = stv_new("This is an example string: Hello, world!");
+    myview = stv_slice(myview, stv_lastCh(myview, 'H', false), stv_end);  
 
     printf("myview: " stv_PFFMT "\n", stv_PFARG(myview));   // Hello, world!
     return 0;
@@ -33,7 +33,16 @@ int main(int argc, char* argv[]) {
 
 ## Integration
 
-Just copy [stv.h](./include/stv.h) into your project and include it.
+Just add dependencies in [`xmake.lua`](https://xmake.io/):
+
+```lua
+add_requires("stv")
+
+target("project")
+    add_packages("stv")
+```
+
+Or simpl copy [stv.h](./include/stv.h) into your project and include it.
 
 Then define `LIB_STV_IMPL` before `#include` in **one** source file (e.g., `stv.c`):
 
@@ -65,16 +74,26 @@ For detailed parameter descriptions, return values and examples, please see the 
 | Slicing               | `stv_slice`, `stv_removeStart`, `stv_removeEnd`, `stv_removePrefix`, `stv_removeSuffix`               |
 | Splitting             | `stv_split`, `stv_splitLines`, `stv_splitWords`, `stv_beforeFirstDelim`, `stv_afterLastDelim`         |
 | Trimming              | `stv_trim`, `stv_trimStart`, `stv_trimEnd`, `stv_whitespace`                                          |
-| Searching             | `stv_search`, `stv_rev_search`, `stv_firstIndex`, `stv_lastIndex`, `stv_firstDiff`, `stv_lastDiff`    |
+| Searching             | `stv_search`, `stv_searchRev`, `stv_firstIndex`, `stv_lastIndex`, `stv_firstDiff`, `stv_lastDiff`     |
 | Comparison            | `stv_compare`, `stv_equal`, `stv_same`, `stv_startsWith`, `stv_endsWith`, `stv_contains`, `stv_empty` |
-| Counting / Predicates | `stv_count`, `stv_every`, `stv_some`                                                                  |
+| Counting / Predicates | `stv_count`, `stv_countSubstr`, `stv_every`, `stv_some`                                               |
 | Utilities             | `stv_front`, `stv_back`, `stv_forEach`, `stv_swap`, `stv_hash`, `stv_PFARG`, `stv_PFFMT`              |
-| C string conversion   | `stv_cstr`, `stv_opt_cstr`, `stv_opt_join`                                                            |
+| C string conversion   | `stv_cstr`, `stv_join`                                                                                |
 | Numeric parsing       | `stv_parseInum`, `stv_parseUnum`                                                                      |
 
 > [!NOTE] 
-> Some API are `_Generic` macros and are only available with C11 or later;  
-> In C99 should be use specific functions instead (e.g., `stv_trim` -> `stv_trimIf`, `stv_lastIndex` -> `stv_lastChar`).
+> Some APIs are `_Generic` macros and are only available with C11 or later;  
+> In C99 or C++, should be use specific functions instead (e.g., `stv_trim` -> `stv_trimIf`, `stv_lastIndex` -> `stv_lastCh`).
+
+## Acknowledgments
+
+This project uses the following open-source projects:
+
+- **[Unity](https://github.com/ThrowTheSwitch/Unity)** - A lightweight C unit testing framework, licensed under the MIT License. Used for unit testing in this project.
+
+Contributors:
+
+- Thanks to [@luadebug](https://github.com/luadebug) for integrating `stv` into [xmake-repo](https://github.com/xmake-io/xmake-repo) ([PR #10115](https://github.com/xmake-io/xmake-repo/pull/10115)).
 
 ## License
 

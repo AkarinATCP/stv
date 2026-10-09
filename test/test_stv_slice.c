@@ -104,7 +104,7 @@ void test_stv_removeEnd_empty_view(void) {
 void test_stv_removePrefix_match(void) {
     strview sv     = stv_literal("http://example.com");
     strview prefix = stv_literal("http://");
-    strview result = stv_removePrefix(sv, prefix);
+    strview result = stv_removePrefix(sv, prefix, false);
     TEST_ASSERT_EQUAL_size_t(11, result.len);
     TEST_ASSERT_EQUAL_CHAR_ARRAY("example.com", result.data, 11);
 }
@@ -112,22 +112,22 @@ void test_stv_removePrefix_match(void) {
 void test_stv_removePrefix_no_match(void) {
     strview sv     = stv_literal("ftp://example.com");
     strview prefix = stv_literal("http://");
-    TEST_ASSERT_TRUE(stv_equal(sv, stv_removePrefix(sv, prefix)));
+    TEST_ASSERT_TRUE(stv_equal(sv, stv_removePrefix(sv, prefix, false)));
 }
 
 void test_stv_removePrefix_empty_prefix(void) {
     strview sv = stv_literal("hello");
-    TEST_ASSERT_TRUE(stv_equal(sv, stv_removePrefix(sv, stv_nullstv)));
+    TEST_ASSERT_TRUE(stv_equal(sv, stv_removePrefix(sv, stv_nullstv, false)));
 }
 
 void test_stv_removePrefix_empty_view(void) {
-    TEST_ASSERT_TRUE(stv_empty(stv_removePrefix(stv_nullstv, stv_literal("a"))));
+    TEST_ASSERT_TRUE(stv_empty(stv_removePrefix(stv_nullstv, stv_literal("a"), false)));
 }
 
 void test_stv_removeSuffix_match(void) {
     strview sv     = stv_literal("document.txt");
     strview suffix = stv_literal(".txt");
-    strview result = stv_removeSuffix(sv, suffix);
+    strview result = stv_removeSuffix(sv, suffix, false);
     TEST_ASSERT_EQUAL_size_t(8, result.len);
     TEST_ASSERT_EQUAL_CHAR_ARRAY("document", result.data, 8);
 }
@@ -135,41 +135,41 @@ void test_stv_removeSuffix_match(void) {
 void test_stv_removeSuffix_no_match(void) {
     strview sv     = stv_literal("document.md");
     strview suffix = stv_literal(".txt");
-    TEST_ASSERT_TRUE(stv_equal(sv, stv_removeSuffix(sv, suffix)));
+    TEST_ASSERT_TRUE(stv_equal(sv, stv_removeSuffix(sv, suffix, false)));
 }
 
 void test_stv_removeSuffix_empty_suffix(void) {
     strview sv = stv_literal("hello");
-    TEST_ASSERT_TRUE(stv_equal(sv, stv_removeSuffix(sv, stv_nullstv)));
+    TEST_ASSERT_TRUE(stv_equal(sv, stv_removeSuffix(sv, stv_nullstv, false)));
 }
 
 void test_stv_removeSuffix_empty_view(void) {
-    TEST_ASSERT_TRUE(stv_empty(stv_removeSuffix(stv_nullstv, stv_literal("a"))));
+    TEST_ASSERT_TRUE(stv_empty(stv_removeSuffix(stv_nullstv, stv_literal("a"), false)));
 }
 
 /* ========== nocase 变体 ========== */
-void test_stv_removePrefixNocase_match(void) {
-    strview result = stv_removePrefixNocase(stv_literal("HTTP://example.com"), stv_literal("http://"));
+void test_stv_removePrefix_nocase_match(void) {
+    strview result = stv_removePrefix(stv_literal("HTTP://example.com"), stv_literal("http://"), true);
     TEST_ASSERT_EQUAL_size_t(11, result.len);
     TEST_ASSERT_EQUAL_CHAR_ARRAY("example.com", result.data, 11);
 }
 
-void test_stv_removePrefixNocase_no_match(void) {
+void test_stv_removePrefix_nocase_no_match(void) {
     strview sv     = stv_literal("ftp://example.com");
     strview prefix = stv_literal("http://");
-    TEST_ASSERT_TRUE(stv_equal(sv, stv_removePrefixNocase(sv, prefix)));
+    TEST_ASSERT_TRUE(stv_equal(sv, stv_removePrefix(sv, prefix, true)));
 }
 
-void test_stv_removeSuffixNocase_match(void) {
-    strview result = stv_removeSuffixNocase(stv_literal("document.TXT"), stv_literal(".txt"));
+void test_stv_removeSuffix_nocase_match(void) {
+    strview result = stv_removeSuffix(stv_literal("document.TXT"), stv_literal(".txt"), true);
     TEST_ASSERT_EQUAL_size_t(8, result.len);
     TEST_ASSERT_EQUAL_CHAR_ARRAY("document", result.data, 8);
 }
 
-void test_stv_removeSuffixNocase_no_match(void) {
+void test_stv_removeSuffix_nocase_no_match(void) {
     strview sv     = stv_literal("document.md");
     strview suffix = stv_literal(".txt");
-    TEST_ASSERT_TRUE(stv_equal(sv, stv_removeSuffixNocase(sv, suffix)));
+    TEST_ASSERT_TRUE(stv_equal(sv, stv_removeSuffix(sv, suffix, true)));
 }
 
 void run_slice_tests(void) {
@@ -198,8 +198,8 @@ void run_slice_tests(void) {
     RUN_TEST(test_stv_removeSuffix_no_match);
     RUN_TEST(test_stv_removeSuffix_empty_suffix);
     RUN_TEST(test_stv_removeSuffix_empty_view);
-    RUN_TEST(test_stv_removePrefixNocase_match);
-    RUN_TEST(test_stv_removePrefixNocase_no_match);
-    RUN_TEST(test_stv_removeSuffixNocase_match);
-    RUN_TEST(test_stv_removeSuffixNocase_no_match);
+    RUN_TEST(test_stv_removePrefix_nocase_match);
+    RUN_TEST(test_stv_removePrefix_nocase_no_match);
+    RUN_TEST(test_stv_removeSuffix_nocase_match);
+    RUN_TEST(test_stv_removeSuffix_nocase_no_match);
 }

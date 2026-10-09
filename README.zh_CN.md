@@ -22,8 +22,8 @@
 #include <stdio.h>
 
 int main(int argc, char* argv[]) {
-    strview myview = stv_new("This is a example string: Hello, world!");
-    myview = stv_slice(myview, stv_lastChar(myview, 'H', false), stv_end);  
+    strview myview = stv_new("This is an example string: Hello, world!");
+    myview = stv_slice(myview, stv_lastCh(myview, 'H', false), stv_end);  
 
     printf("myview: " stv_PFFMT "\n", stv_PFARG(myview));   // Hello, world!
     return 0;
@@ -32,7 +32,16 @@ int main(int argc, char* argv[]) {
 
 ## 集成方式
 
-直接将 [stv.h](./include/stv.h) 复制到你的工程中并包含它。
+在 [`xmake.lua`](https://xmake.io/) 中添加依赖：
+
+```lua
+add_requires("stv")
+
+target("project")
+    add_packages("stv")
+```
+
+或者直接将 [stv.h](./include/stv.h) 复制到你的工程中并包含它。
 
 然后在 **某一个** 源文件（如 `stv.c`）的 `#include` 前定义 `LIB_STV_IMPL`：
 
@@ -63,16 +72,26 @@ int main(int argc, char* argv[]) {
 | 切片        | `stv_slice`, `stv_removeStart`, `stv_removeEnd`, `stv_removePrefix`, `stv_removeSuffix`               |
 | 分割        | `stv_split`, `stv_splitLines`, `stv_splitWords`, `stv_beforeFirstDelim`, `stv_afterLastDelim`         |
 | 修剪        | `stv_trim`, `stv_trimStart`, `stv_trimEnd`, `stv_whitespace`                                          |
-| 搜索        | `stv_search`, `stv_rev_search`, `stv_firstIndex`, `stv_lastIndex`, `stv_firstDiff`, `stv_lastDiff`    |
+| 搜索        | `stv_search`, `stv_searchRev`, `stv_firstIndex`, `stv_lastIndex`, `stv_firstDiff`, `stv_lastDiff`     |
 | 比较        | `stv_compare`, `stv_equal`, `stv_same`, `stv_startsWith`, `stv_endsWith`, `stv_contains`, `stv_empty` |
-| 计数 / 谓词 | `stv_count`, `stv_every`, `stv_some`                                                                  |
+| 计数 / 谓词 | `stv_count`, `stv_countSubstr`, `stv_every`, `stv_some`                                               |
 | 工具函数    | `stv_front`, `stv_back`, `stv_forEach`, `stv_swap`, `stv_hash`, `stv_PFARG`, `stv_PFFMT`              |
-| C字符串转换 | `stv_cstr`, `stv_opt_cstr`, `stv_opt_join`                                                            |
+| C字符串转换 | `stv_cstr`, `stv_join`                                                                                |
 | 数值解析    | `stv_parseInum`, `stv_parseUnum`                                                                      |
 
 > [!NOTE] 
 > 部分 API 为 `_Generic` 宏，仅在 C11 及以上时可用；  
-> 在 C99 中应改用具体函数（如 `stv_trim` -> `stv_trimIf`、`stv_lastIndex` -> `stv_lastChar`）。
+> 在 C99 或 C++ 中应改用具体函数（如 `stv_trim` -> `stv_trimIf`、`stv_lastIndex` -> `stv_lastCh`）。
+
+## 致谢
+
+本项目使用了以下开源项目：
+
+- **[Unity](https://github.com/ThrowTheSwitch/Unity)** - 轻量级 C 语言单元测试框架，基于 MIT 许可证。用于本项目的单元测试。
+
+相关贡献者：
+
+- 感谢 [@luadebug](https://github.com/luadebug) 将 `stv` 集成到 [xmake-repo](https://github.com/xmake-io/xmake-repo)（[PR #10115](https://github.com/xmake-io/xmake-repo/pull/10115)）。
 
 ## 许可证
 

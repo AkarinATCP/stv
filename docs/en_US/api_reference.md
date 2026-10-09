@@ -24,9 +24,7 @@
   - [stv_removeStart](#stv_removestart)
   - [stv_removeEnd](#stv_removeend)
   - [stv_removePrefix](#stv_removeprefix)
-  - [stv_removePrefixNocase](#stv_removeprefixnocase)
   - [stv_removeSuffix](#stv_removesuffix)
-  - [stv_removeSuffixNocase](#stv_removesuffixnocase)
 - [Splitting](#splitting)
   - [stv_split](#stv_split)
   - [stv_splitLines](#stv_splitlines)
@@ -49,44 +47,45 @@
 - [Search](#search)
   - [stv_firstIndex (Macro)](#stv_firstindex-macro)
   - [stv_lastIndex (Macro)](#stv_lastindex-macro)
-  - [stv_firstChar](#stv_firstchar)
-  - [stv_lastChar](#stv_lastchar)
-  - [stv_firstCharset](#stv_firstcharset)
-  - [stv_lastCharset](#stv_lastcharset)
-  - [stv_firstCharClass](#stv_firstcharclass)
-  - [stv_lastCharClass](#stv_lastcharclass)
+  - [stv_firstCh](#stv_firstch)
+  - [stv_lastCh](#stv_lastch)
+  - [stv_firstChs](#stv_firstchs)
+  - [stv_lastChs](#stv_lastchs)
+  - [stv_firstIf](#stv_firstif)
+  - [stv_lastIf](#stv_lastif)
   - [stv_search](#stv_search)
   - [stv_naiveSearch](#stv_naivesearch)
   - [stv_sundaySearch](#stv_sundaysearch)
-  - [stv_rev_search](#stv_rev_search)
-  - [stv_rev_naiveSearch](#stv_rev_naivesearch)
-  - [stv_rev_sundaySearch](#stv_rev_sundaysearch)
+  - [stv_searchRev](#stv_searchrev)
+  - [stv_naiveSearchRev](#stv_naivesearchrev)
+  - [stv_sundaySearchRev](#stv_sundaysearchrev)
 - [Comparison](#comparison)
   - [stv_firstDiff](#stv_firstdiff)
   - [stv_lastDiff](#stv_lastdiff)
+  - [stv_length](#stv_length)
   - [stv_compare](#stv_compare)
-  - [stv_compareNocase](#stv_comparenocase)
+  - [stv_compareEx](#stv_compareex)
   - [stv_startsWith](#stv_startswith)
-  - [stv_startsWithNocase](#stv_startswithnocase)
   - [stv_endsWith](#stv_endswith)
-  - [stv_endsWithNocase](#stv_endswithnocase)
   - [stv_contains](#stv_contains)
-  - [stv_containsNocase](#stv_containsnocase)
   - [stv_equal](#stv_equal)
-  - [stv_equalNocase](#stv_equalnocase)
+  - [stv_equalEx](#stv_equalex)
   - [stv_same](#stv_same)
   - [stv_empty](#stv_empty)
 - [Count / Predicates](#count--predicates)
   - [stv_count (Macro)](#stv_count-macro)
+  - [stv_countCh](#stv_countch)
+  - [stv_countChs](#stv_countchs)
   - [stv_countIf](#stv_countif)
-  - [stv_countChar](#stv_countchar)
   - [stv_countSubstr](#stv_countsubstr)
   - [stv_every (Macro)](#stv_every-macro)
+  - [stv_everyCh](#stv_everych)
+  - [stv_everyChs](#stv_everychs)
   - [stv_everyIf](#stv_everyif)
-  - [stv_everyChar](#stv_everychar)
   - [stv_some (Macro)](#stv_some-macro)
+  - [stv_someCh](#stv_somech)
+  - [stv_someChs](#stv_somechs)
   - [stv_someIf](#stv_someif)
-  - [stv_someChar](#stv_somechar)
 - [Utilities](#utilities)
   - [stv_front](#stv_front)
   - [stv_back](#stv_back)
@@ -101,13 +100,12 @@
   - [stv_npos / stv_begin / stv_end (macros)](#stv_npos--stv_begin--stv_end-macros)
 - [C String Conversion](#c-string-conversion)
   - [stv_cstr](#stv_cstr)
-  - [stv_opt_cstr](#stv_opt_cstr)
-  - [stv_opt_join](#stv_opt_join)
+  - [stv_join](#stv_join)
 - [Number Parsing](#number-parsing)
-  - [stv_parseInum](#stv_parseinum)
-  - [stv_parseUnum](#stv_parseunum)
   - [stv_ch2digit](#stv_ch2digit)
   - [stv_parseIntBase](#stv_parseintbase)
+  - [stv_parseInum](#stv_parseinum)
+  - [stv_parseUnum](#stv_parseunum)
 
 ---
 
@@ -130,28 +128,33 @@ Pointer to a character classification function, e.g. `isspace`, `isdigit`. Recei
 
 ### `stv_forEachFn`
 ```c
-typedef void (*stv_forEachFn)(char ch, size_t idx, strview ctx);
+typedef void (*stv_forEachFn)(char ch, size_t idx, void* ctx);
 ```
-Callback type for iteration. Parameters are the current character, its index, and the original view.
+Callback type for iteration. Parameters are the current character, its index, and a user‑provided context pointer `ctx`.
 
 ### `stv_cstrOptions`
 ```c
 typedef enum {
-    stv_Default  = 0,
-    stv_ToUpper  = 1,
-    stv_ToLower  = 2,
-    stv_Reverse  = 4,
-    stv_Truncate = 8,
+    stv_Default     = 0,  // 0b00000000
+    stv_ToUpper     = 1,  // 0b00000001
+    stv_ToLower     = 2,  // 0b00000010
+    stv_Reverse     = 4,  // 0b00000100
+    stv_Truncate    = 8,  // 0b00001000
+    stv_JoinReverse = 16, // 0b00010000
+    stv_ViewReverse = 32, // 0b00100000
 } stv_cstrOptions;
 ```
 Output options, combinable with bitwise OR:
-- `stv_Default` – no transformation.
-- `stv_ToUpper` – convert to uppercase (ASCII letters only).
-- `stv_ToLower` – convert to lowercase.
-- `stv_Reverse` – reverse character order.
-- `stv_Truncate` – truncate if the view length ≥ buffer size.
 
-Setting both `stv_ToUpper` and `stv_ToLower` simultaneously results in case swapping (swapCase).
+- `stv_Default` – no transformation, plain byte copy.
+- `stv_ToUpper` – for each output byte, convert ASCII `'a'`-`'z'` to `'A'`-`'Z'`.
+- `stv_ToLower` – for each output byte, convert ASCII `'A'`-`'Z'` to `'a'`-`'z'`.
+- `stv_Reverse` – reverse the byte order of the *entire* output written to `mem`.
+- `stv_Truncate` – if the output would not fit in `mem`, write as much as possible (keeping space for the null terminator) and return `mem`; otherwise `stv_cstr` / `stv_join` return `NULL` on overflow and leave `mem` untouched.
+- `stv_JoinReverse` – only honoured by `stv_join`. Iterate `stv_arr` from the last element to the first.
+- `stv_ViewReverse` – read each source view from its last byte to its first. In `stv_cstr`, this changes which source bytes are consumed (see truncation note below). In `stv_join`, it is applied independently to each element *before* any whole‑buffer `stv_Reverse` reversal.
+
+> When both `stv_ToUpper` and `stv_ToLower` are set, the effective behaviour is swap‑case for ASCII letters (e.g., `"Abc"` -> `"aBC"`).
 
 ---
 
@@ -161,7 +164,7 @@ Setting both `stv_ToUpper` and `stv_ToLower` simultaneously results in case swap
 ```c
 strview stv_new(const char* c_str);
 ```
-Constructs a view from a C string. The view length excludes the null terminator.
+Creates a view from a null‑terminated C string. The view length excludes the null terminator.
 
 Example:
 ```c
@@ -180,7 +183,7 @@ strview sv = stv_new("hello"); // sv = {"hello", 5}
 ```c
 strview stv_create(const char* str, unsigned char endchar, size_t maxlen);
 ```
-Constructs a view by scanning `str`. Scanning stops after `maxlen` bytes or when `endchar` is encountered.
+Creates a view by scanning `str`. Scanning stops after `maxlen` bytes or when `endchar` is encountered. The stop character itself is not included.
 
 Example:
 ```c
@@ -238,7 +241,7 @@ Predefined empty view with `data == NULL` and `len == 0`.
 ```c
 strview stv_slice(strview stv, size_t begin_pos, size_t end_pos);
 ```
-Extracts the substring view `[begin_pos, end_pos)`. The range is invalid if indices are out of bounds or `begin_pos >= end_pos`.
+Extracts the substring view `[begin_pos, end_pos)`. The range is invalid if indices are out of bounds or `begin_pos >= end_pos`, returning an empty view.
 
 Use [`stv_end`](#stv_npos--stv_begin--stv_end-macros) to slice through the end.
 
@@ -263,7 +266,7 @@ strview rest = stv_slice(sv, 2, stv_end); // rest = "llo"
 ```c
 strview stv_removeStart(strview stv, size_t len);
 ```
-Removes `len` bytes from the beginning. Returns an empty view if `len >= stv.len`. Equivalent to `stv_slice(stv, len, stv_end)`.
+Removes `len` bytes from the beginning. Returns an empty view if `len >= stv.len`.
 
 Example:
 ```c
@@ -283,7 +286,7 @@ strview sv = stv_removeStart(stv_literal("Hello World"), 6); // "World"
 ```c
 strview stv_removeEnd(strview stv, size_t len);
 ```
-Removes `len` bytes from the end. Returns an empty view if `len >= stv.len`. Equivalent to `stv_slice(stv, stv_begin, stv.len - len)`.
+Removes `len` bytes from the end. Returns an empty view if `len >= stv.len`.
 
 Example:
 ```c
@@ -301,43 +304,22 @@ strview sv = stv_removeEnd(stv_literal("Hello World"), 6); // "Hello"
 
 ### `stv_removePrefix`
 ```c
-strview stv_removePrefix(strview stv, strview prefix);
+strview stv_removePrefix(strview stv, strview prefix, bool nocase);
 ```
-If `stv` starts with `prefix` (determined by [`stv_startsWith`](#stv_startswith)), returns the view with that prefix removed; otherwise returns the original view.
+If `stv` starts with `prefix`, returns the view with that prefix removed; otherwise returns the original view. An empty `prefix` matches and returns the original view.
 
 Example:
 ```c
 strview sv = stv_literal("http://example.com");
-strview result = stv_removePrefix(sv, stv_literal("http://"));
+strview result = stv_removePrefix(sv, stv_literal("http://"), false);
 // result = "example.com"
 ```
 
-| Parameter | Description             |
-|-----------|-------------------------|
-| `stv`     | Source view             |
-| `prefix`  | Prefix to remove        |
-
-| Return | Description                              |
-|--------|------------------------------------------|
-| View   | View without prefix, or the original view |
-
-### `stv_removePrefixNocase`
-```c
-strview stv_removePrefixNocase(strview stv, strview prefix);
-```
-Same as [`stv_removePrefix`](#stv_removeprefix), but prefix matching is case‑insensitive (uses [`stv_startsWithNocase`](#stv_startswithnocase)).
-
-Example:
-```c
-strview sv = stv_literal("http://example.com");
-strview result = stv_removePrefixNocase(sv, stv_literal("HTTP://"));
-// result = "example.com"
-```
-
-| Parameter | Description      |
-|-----------|------------------|
-| `stv`     | Source view      |
-| `prefix`  | Prefix to remove |
+| Parameter | Description                         |
+|-----------|-------------------------------------|
+| `stv`     | Source view                         |
+| `prefix`  | Prefix to remove                    |
+| `nocase`  | If true, ignore ASCII letter case   |
 
 | Return | Description                              |
 |--------|------------------------------------------|
@@ -345,43 +327,22 @@ strview result = stv_removePrefixNocase(sv, stv_literal("HTTP://"));
 
 ### `stv_removeSuffix`
 ```c
-strview stv_removeSuffix(strview stv, strview suffix);
+strview stv_removeSuffix(strview stv, strview suffix, bool nocase);
 ```
-If `stv` ends with `suffix` (determined by [`stv_endsWith`](#stv_endswith)), returns the view with that suffix removed; otherwise returns the original view.
+If `stv` ends with `suffix`, returns the view with that suffix removed; otherwise returns the original view. An empty `suffix` matches and returns the original view.
 
 Example:
 ```c
 strview sv = stv_literal("document.txt");
-strview result = stv_removeSuffix(sv, stv_literal(".txt"));
+strview result = stv_removeSuffix(sv, stv_literal(".txt"), false);
 // result = "document"
 ```
 
-| Parameter | Description      |
-|-----------|------------------|
-| `stv`     | Source view      |
-| `suffix`  | Suffix to remove |
-
-| Return | Description                              |
-|--------|------------------------------------------|
-| View   | View without suffix, or the original view |
-
-### `stv_removeSuffixNocase`
-```c
-strview stv_removeSuffixNocase(strview stv, strview suffix);
-```
-Same as [`stv_removeSuffix`](#stv_removesuffix), but suffix matching is case‑insensitive (uses [`stv_endsWithNocase`](#stv_endswithnocase)).
-
-Example:
-```c
-strview sv = stv_literal("document.txt");
-strview result = stv_removeSuffixNocase(sv, stv_literal(".TXT"));
-// result = "document"
-```
-
-| Parameter | Description      |
-|-----------|------------------|
-| `stv`     | Source view      |
-| `suffix`  | Suffix to remove |
+| Parameter | Description                         |
+|-----------|-------------------------------------|
+| `stv`     | Source view                         |
+| `suffix`  | Suffix to remove                    |
+| `nocase`  | If true, ignore ASCII letter case   |
 
 | Return | Description                              |
 |--------|------------------------------------------|
@@ -393,18 +354,16 @@ strview result = stv_removeSuffixNocase(sv, stv_literal(".TXT"));
 
 ### `stv_split`
 ```c
-strview stv_split(strview stv, strview sep, bool nocase, strview* remaining);
+strview stv_split(strview stv, strview sep, strview* remaining, bool nocase);
 ```
-Finds the first separator `sep` and returns the part before it. The remainder (excluding `sep`) is stored in `*remaining`.
+Finds the first separator `sep` and returns the part before it. The remainder (excluding `sep`) is stored in `*remaining`. If the separator is not found, the full view is returned and `*remaining` is set to an empty view.
 
-If the separator is not found, the full view is returned and `*remaining` is set to an empty view.
-
-If `sep` is an empty view, the split is performed character by character.
+If `sep` is an empty view, the split is performed character by character: the returned view contains the first character, and `*remaining` receives the rest.
 
 Example:
 ```c
 strview rem;
-strview first = stv_split(stv_literal("hello world"), stv_literal(" "), false, &rem);
+strview first = stv_split(stv_literal("hello world"), stv_literal(" "), &rem, false);
 // first = "hello", rem = "world"
 ```
 
@@ -412,8 +371,8 @@ strview first = stv_split(stv_literal("hello world"), stv_literal(" "), false, &
 |-------------|------------------------------------------------------------|
 | `stv`       | View to split                                              |
 | `sep`       | Separator view (empty for character‑wise split)            |
-| `nocase`    | `true` for case‑insensitive separator matching             |
 | `remaining` | Output parameter receiving the remainder (may be NULL)     |
+| `nocase`    | If true, ignore ASCII letter case during separator search  |
 
 | Return | Description              |
 |--------|--------------------------|
@@ -423,7 +382,7 @@ strview first = stv_split(stv_literal("hello world"), stv_literal(" "), false, &
 ```c
 strview stv_splitLines(strview stv, strview* remaining);
 ```
-Splits at the first line break (LF, CR, or CRLF). Returns the first line without the line break, and stores the remainder in `*remaining`.
+Splits at the first line break (LF, CR, or CRLF). Returns the first line without the line break, and stores the remainder in `*remaining`. If no break is found, returns the entire view and sets `*remaining` to an empty view.
 
 Example:
 ```c
@@ -445,9 +404,7 @@ line = stv_splitLines(stv_literal("hello\r\nworld"), &rest);
 ```c
 strview stv_splitWords(strview stv, strview* remaining);
 ```
-Skips whitespace, then extracts the next contiguous sequence of non‑whitespace characters. The remainder is stored in `*remaining`.
-
-If no word is found, an empty view is returned and `*remaining` is set to an empty view.
+Skips leading whitespace, then extracts the next contiguous sequence of non‑whitespace characters. The remainder is stored in `*remaining`. If no word is found, an empty view is returned and `*remaining` is set to an empty view.
 
 > See [`stv_whitespace`](#stv_whitespace-macro) for the whitespace definition.
 
@@ -553,13 +510,13 @@ strview file = stv_afterLastDelim(stv_literal("a/b/c"), stv_literal("/")); // "c
 
 ### `stv_trim` (Macro)
 ```c
-#define stv_trim(stv, target) /* ... */
+#define stv_trim(stv, target) \
+    _Generic((target), stv_charClassFn: stv_trimIf, strview: stv_trimChs)((stv), (target))
 ```
-Removes leading and trailing characters.
+Removes leading and trailing characters. C11 `_Generic` macro, dispatches based on `target` type:
 
-C11 `_Generic` macro. Dispatches based on `target` type:
-- `strview` -> [`stv_trimChs`](#stv_trimchs)
-- `stv_charClassFn` -> [`stv_trimIf`](#stv_trimif)
+- `stv_charClassFn` → [`stv_trimIf`](#stv_trimif)
+- `strview` → [`stv_trimChs`](#stv_trimchs)
 
 Example:
 ```c
@@ -567,9 +524,12 @@ stv_trim(sv, stv_whitespace);   // calls stv_trimChs
 stv_trim(sv, isspace);          // calls stv_trimIf
 ```
 
+> Only available with C11 or later. In C99 or C++, call the specific function directly.
+
 ### `stv_trimStart` (Macro)
 ```c
-#define stv_trimStart(stv, target) /* ... */
+#define stv_trimStart(stv, target) \
+    _Generic((target), stv_charClassFn: stv_trimStartIf, strview: stv_trimStartChs)((stv), (target))
 ```
 Like [`stv_trim`](#stv_trim-macro), but only trims the start.
 
@@ -577,7 +537,8 @@ Dispatches to [`stv_trimStartChs`](#stv_trimstartchs) or [`stv_trimStartIf`](#st
 
 ### `stv_trimEnd` (Macro)
 ```c
-#define stv_trimEnd(stv, target) /* ... */
+#define stv_trimEnd(stv, target) \
+    _Generic((target), stv_charClassFn: stv_trimEndIf, strview: stv_trimEndChs)((stv), (target))
 ```
 Like [`stv_trim`](#stv_trim-macro), but only trims the end.
 
@@ -587,7 +548,7 @@ Dispatches to [`stv_trimEndChs`](#stv_trimendchs) or [`stv_trimEndIf`](#stv_trim
 ```c
 strview stv_trimChs(strview stv, strview charset);
 ```
-Removes leading and trailing characters that appear in `charset`. If the charset is an empty view, no trimming occurs.
+Removes leading and trailing characters that appear in `charset`. If `charset` is an empty view, returns the original view.
 
 Example:
 ```c
@@ -609,7 +570,7 @@ strview trimmed = stv_trimChs(sv, stv_whitespace);
 ```c
 strview stv_trimStartChs(strview stv, strview charset);
 ```
-Removes leading characters from `charset` only. If the charset is an empty view, no trimming occurs.
+Removes leading characters from `charset` only. If `charset` is an empty view, returns the original view.
 
 Example:
 ```c
@@ -631,7 +592,7 @@ strview trimmed = stv_trimStartChs(sv, stv_whitespace);
 ```c
 strview stv_trimEndChs(strview stv, strview charset);
 ```
-Removes trailing characters from `charset` only. If the charset is an empty view, no trimming occurs.
+Removes trailing characters from `charset` only. If `charset` is an empty view, returns the original view.
 
 Example:
 ```c
@@ -653,7 +614,7 @@ strview trimmed = stv_trimEndChs(sv, stv_whitespace);
 ```c
 strview stv_trimIf(strview stv, stv_charClassFn handle);
 ```
-Removes leading and trailing characters that satisfy the classification function `handle`. If `handle` is NULL, no trimming occurs.
+Removes leading and trailing characters that satisfy the classification function `handle`. If `handle` is NULL, returns the original view.
 
 > For the character classification type, see [`stv_charClassFn`](#stv_charclassfn).
 
@@ -677,9 +638,7 @@ strview trimmed = stv_trimIf(sv, isspace);
 ```c
 strview stv_trimStartIf(strview stv, stv_charClassFn handle);
 ```
-Removes only leading characters that satisfy `handle`. If `handle` is NULL, no trimming occurs.
-
-> For the character classification type, see [`stv_charClassFn`](#stv_charclassfn).
+Removes only leading characters that satisfy `handle`. If `handle` is NULL, returns the original view.
 
 Example:
 ```c
@@ -701,9 +660,7 @@ strview trimmed = stv_trimStartIf(sv, isspace);
 ```c
 strview stv_trimEndIf(strview stv, stv_charClassFn handle);
 ```
-Removes only trailing characters that satisfy `handle`. If `handle` is NULL, no trimming occurs.
-
-> For the character classification type, see [`stv_charClassFn`](#stv_charclassfn).
+Removes only trailing characters that satisfy `handle`. If `handle` is NULL, returns the original view.
 
 Example:
 ```c
@@ -733,43 +690,46 @@ Predefined whitespace character set view. Often used with functions like [`stv_t
 
 ### `stv_firstIndex` (Macro)
 ```c
-#define stv_firstIndex(stv, target, invert) /* ... */
+#define stv_firstIndex(stv, target, invert) \
+    _Generic((target), int: stv_firstCh, char: stv_firstCh, stv_charClassFn: stv_firstIf, strview: stv_firstChs)( \
+        (stv), (target), (invert))
 ```
-Finds the index of the first matching character.
+Finds the index of the first matching character. C11 `_Generic` macro, dispatches based on `target` type:
 
-C11 `_Generic` macro. Dispatches based on `target` type:
-- `char` -> [`stv_firstChar`](#stv_firstchar)
-- `strview` -> [`stv_firstCharset`](#stv_firstcharset)
-- `stv_charClassFn` -> [`stv_firstCharClass`](#stv_firstcharclass)
+- `int` / `char` → [`stv_firstCh`](#stv_firstch)
+- `stv_charClassFn` → [`stv_firstIf`](#stv_firstif)
+- `strview` → [`stv_firstChs`](#stv_firstchs)
 
 Example:
 ```c
-stv_firstIndex(sv, 'a', false);                  // calls stv_firstChar
-stv_firstIndex(sv, stv_literal("aeiou"), false); // calls stv_firstCharset
-stv_firstIndex(sv, isalpha, false);              // calls stv_firstCharClass
+stv_firstIndex(sv, 'a', false);                  // calls stv_firstCh
+stv_firstIndex(sv, stv_literal("aeiou"), false); // calls stv_firstChs
+stv_firstIndex(sv, isalpha, false);              // calls stv_firstIf
 ```
 
 ### `stv_lastIndex` (Macro)
 ```c
-#define stv_lastIndex(stv, target, invert) /* ... */
+#define stv_lastIndex(stv, target, invert) \
+    _Generic((target), int: stv_lastCh, char: stv_lastCh, stv_charClassFn: stv_lastIf, strview: stv_lastChs)( \
+        (stv), (target), (invert))
 ```
 Like [`stv_firstIndex`](#stv_firstindex-macro), but finds the last matching character.
 
-Dispatches to [`stv_lastChar`](#stv_lastchar), [`stv_lastCharset`](#stv_lastcharset), or [`stv_lastCharClass`](#stv_lastcharclass).
+Dispatches to [`stv_lastCh`](#stv_lastch), [`stv_lastChs`](#stv_lastchs), or [`stv_lastIf`](#stv_lastif).
 
-### `stv_firstChar`
+### `stv_firstCh`
 ```c
-size_t stv_firstChar(strview stv, const char ch, bool invert);
+size_t stv_firstCh(strview stv, const char ch, bool invert);
 ```
-Finds the index of the first character **equal** to `ch`. Returns [`stv_npos`](#stv_npos--stv_begin--stv_end-macros) if not found.
+Finds the index of the first character **equal** to `ch`. Returns [`stv_npos`](#stv_npos--stv_begin--stv_end-macros) if not found or the view is empty.
 
 If `invert` is `true`, finds the first character **not equal** to `ch`.
 
 Example:
 ```c
 strview sv = stv_literal("hello");
-size_t p1 = stv_firstChar(sv, 'l', false); // 2
-size_t p2 = stv_firstChar(sv, 'h', true);  // 1 (first character not equal to 'h')
+size_t p1 = stv_firstCh(sv, 'l', false); // 2
+size_t p2 = stv_firstCh(sv, 'h', true);  // 1 (first character not equal to 'h')
 ```
 
 | Parameter | Description                |
@@ -782,19 +742,19 @@ size_t p2 = stv_firstChar(sv, 'h', true);  // 1 (first character not equal to 'h
 |--------|-----------------------------|
 | Index  | Position of matching character |
 
-### `stv_lastChar`
+### `stv_lastCh`
 ```c
-size_t stv_lastChar(strview stv, const char ch, bool invert);
+size_t stv_lastCh(strview stv, const char ch, bool invert);
 ```
-Finds the index of the last character **equal** to `ch`. Returns [`stv_npos`](#stv_npos--stv_begin--stv_end-macros) if not found.
+Finds the index of the last character **equal** to `ch`. Returns [`stv_npos`](#stv_npos--stv_begin--stv_end-macros) if not found or the view is empty.
 
 If `invert` is `true`, finds the last character **not equal** to `ch`.
 
 Example:
 ```c
 strview sv = stv_literal("hello");
-size_t p1 = stv_lastChar(sv, 'l', false); // 3
-size_t p2 = stv_lastChar(sv, 'h', true);  // 4 (last character not equal to 'h')
+size_t p1 = stv_lastCh(sv, 'l', false); // 3
+size_t p2 = stv_lastCh(sv, 'h', true);  // 4 (last character not equal to 'h')
 ```
 
 | Parameter | Description                |
@@ -807,19 +767,21 @@ size_t p2 = stv_lastChar(sv, 'h', true);  // 4 (last character not equal to 'h')
 |--------|-----------------------------|
 | Index  | Position of matching character |
 
-### `stv_firstCharset`
+### `stv_firstChs`
 ```c
-size_t stv_firstCharset(strview stv, strview charset, bool invert);
+size_t stv_firstChs(strview stv, strview charset, bool invert);
 ```
-Finds the index of the first character **belonging to** `charset`. Returns [`stv_npos`](#stv_npos--stv_begin--stv_end-macros) if not found or if `charset` is empty.
+Finds the index of the first character **belonging to** `charset`. Returns [`stv_npos`](#stv_npos--stv_begin--stv_end-macros) if not found or the view is empty.
+
+If `charset` is empty: when `invert` is false, no character matches; when `invert` is true, all characters match (returns index 0 for a non‑empty view).
 
 If `invert` is `true`, finds the first character **not in** `charset`.
 
 Example:
 ```c
 strview sv = stv_literal("abc123");
-size_t p1 = stv_firstCharset(sv, stv_literal("abc"), false); // 0
-size_t p2 = stv_firstCharset(sv, stv_literal("abc"), true);  // 3 (first not in "abc")
+size_t p1 = stv_firstChs(sv, stv_literal("0123456789"), false); // 3
+size_t p2 = stv_firstChs(sv, stv_literal("0123456789"), true);  // 0
 ```
 
 | Parameter  | Description                |
@@ -832,19 +794,21 @@ size_t p2 = stv_firstCharset(sv, stv_literal("abc"), true);  // 3 (first not in 
 |--------|-----------------------------|
 | Index  | Position of matching character |
 
-### `stv_lastCharset`
+### `stv_lastChs`
 ```c
-size_t stv_lastCharset(strview stv, strview charset, bool invert);
+size_t stv_lastChs(strview stv, strview charset, bool invert);
 ```
-Finds the index of the last character **belonging to** `charset`. Returns [`stv_npos`](#stv_npos--stv_begin--stv_end-macros) if not found or if `charset` is empty.
+Finds the index of the last character **belonging to** `charset`. Returns [`stv_npos`](#stv_npos--stv_begin--stv_end-macros) if not found or the view is empty.
+
+If `charset` is empty: when `invert` is false, no character matches; when `invert` is true, all characters match (returns the last index for a non‑empty view).
 
 If `invert` is `true`, finds the last character **not in** `charset`.
 
 Example:
 ```c
 strview sv = stv_literal("abc123def456");
-size_t p1 = stv_lastCharset(sv, stv_literal("0123456789"), false); // 11
-size_t p2 = stv_lastCharset(sv, stv_literal("0123456789"), true);  // 8 (last non‑digit)
+size_t p1 = stv_lastChs(sv, stv_literal("0123456789"), false); // 11
+size_t p2 = stv_lastChs(sv, stv_literal("0123456789"), true);  // 8
 ```
 
 | Parameter  | Description                |
@@ -857,11 +821,11 @@ size_t p2 = stv_lastCharset(sv, stv_literal("0123456789"), true);  // 8 (last no
 |--------|-----------------------------|
 | Index  | Position of matching character |
 
-### `stv_firstCharClass`
+### `stv_firstIf`
 ```c
-size_t stv_firstCharClass(strview stv, stv_charClassFn handle, bool invert);
+size_t stv_firstIf(strview stv, stv_charClassFn handle, bool invert);
 ```
-Finds the index of the first character **satisfying** `handle`. Returns [`stv_npos`](#stv_npos--stv_begin--stv_end-macros) if not found or if `handle` is NULL.
+Finds the index of the first character **satisfying** `handle`. Returns [`stv_npos`](#stv_npos--stv_begin--stv_end-macros) if not found, the view is empty, or `handle` is NULL.
 
 If `invert` is `true`, finds the first character **not satisfying** `handle`.
 
@@ -870,8 +834,8 @@ If `invert` is `true`, finds the first character **not satisfying** `handle`.
 Example:
 ```c
 strview sv = stv_literal("abc123");
-size_t p1 = stv_firstCharClass(sv, isdigit, false); // 3
-size_t p2 = stv_firstCharClass(sv, isdigit, true);  // 0 (first non‑digit)
+size_t p1 = stv_firstIf(sv, isdigit, false); // 3
+size_t p2 = stv_firstIf(sv, isdigit, true);  // 0
 ```
 
 | Parameter | Description                     |
@@ -884,21 +848,19 @@ size_t p2 = stv_firstCharClass(sv, isdigit, true);  // 0 (first non‑digit)
 |--------|-----------------------------|
 | Index  | Position of matching character |
 
-### `stv_lastCharClass`
+### `stv_lastIf`
 ```c
-size_t stv_lastCharClass(strview stv, stv_charClassFn handle, bool invert);
+size_t stv_lastIf(strview stv, stv_charClassFn handle, bool invert);
 ```
-Finds the index of the last character **satisfying** `handle`. Returns [`stv_npos`](#stv_npos--stv_begin--stv_end-macros) if not found or if `handle` is NULL.
+Finds the index of the last character **satisfying** `handle`. Returns [`stv_npos`](#stv_npos--stv_begin--stv_end-macros) if not found, the view is empty, or `handle` is NULL.
 
 If `invert` is `true`, finds the last character **not satisfying** `handle`.
-
-> For the character classification type, see [`stv_charClassFn`](#stv_charclassfn).
 
 Example:
 ```c
 strview sv = stv_literal("123abc456");
-size_t p1 = stv_lastCharClass(sv, isdigit, false); // 8
-size_t p2 = stv_lastCharClass(sv, isdigit, true);  // 5 (last non‑digit)
+size_t p1 = stv_lastIf(sv, isdigit, false); // 8
+size_t p2 = stv_lastIf(sv, isdigit, true);  // 5
 ```
 
 | Parameter | Description                     |
@@ -947,9 +909,9 @@ size_t stv_sundaySearch(strview stv_text, strview stv_pat, bool nocase);
 ```
 Sunday algorithm search, suitable for longer patterns. Same parameters and return value as [`stv_search`](#stv_search).
 
-### `stv_rev_search`
+### `stv_searchRev`
 ```c
-size_t stv_rev_search(strview stv_text, strview stv_pat, bool nocase);
+size_t stv_searchRev(strview stv_text, strview stv_pat, bool nocase);
 ```
 Reverse search. Finds the start index of the last occurrence of `stv_pat` in `stv_text`. Returns `stv_text.len` if `stv_pat` is empty, or [`stv_npos`](#stv_npos--stv_begin--stv_end-macros) if not found.
 
@@ -958,7 +920,7 @@ For `stv_pat` with `len > 4`, the Sunday algorithm is used; otherwise a naive se
 Example:
 ```c
 strview text = stv_literal("hello world hello");
-size_t pos = stv_rev_search(text, stv_literal("hello"), false); // 12
+size_t pos = stv_searchRev(text, stv_literal("hello"), false); // 12
 ```
 
 | Parameter   | Description            |
@@ -971,17 +933,17 @@ size_t pos = stv_rev_search(text, stv_literal("hello"), false); // 12
 |--------|------------------------------------|
 | Index  | Start position of the last match   |
 
-### `stv_rev_naiveSearch`
+### `stv_naiveSearchRev`
 ```c
-size_t stv_rev_naiveSearch(strview stv_text, strview stv_pat, bool nocase);
+size_t stv_naiveSearchRev(strview stv_text, strview stv_pat, bool nocase);
 ```
-Reverse naive search. Same parameters and return value as [`stv_rev_search`](#stv_rev_search).
+Reverse naive search. Same parameters and return value as [`stv_searchRev`](#stv_searchrev).
 
-### `stv_rev_sundaySearch`
+### `stv_sundaySearchRev`
 ```c
-size_t stv_rev_sundaySearch(strview stv_text, strview stv_pat, bool nocase);
+size_t stv_sundaySearchRev(strview stv_text, strview stv_pat, bool nocase);
 ```
-Reverse Sunday search. Same parameters and return value as [`stv_rev_search`](#stv_rev_search).
+Reverse Sunday search. Same parameters and return value as [`stv_searchRev`](#stv_searchrev).
 
 ---
 
@@ -991,9 +953,7 @@ Reverse Sunday search. Same parameters and return value as [`stv_rev_search`](#s
 ```c
 size_t stv_firstDiff(strview stv_left, strview stv_right, bool nocase);
 ```
-Finds the index of the first differing byte between the two views. Returns [`stv_npos`](#stv_npos--stv_begin--stv_end-macros) if they are identical.
-
-If one view is a prefix of the other, returns the length of the shorter view.
+Finds the index of the first differing byte between the two views. Returns [`stv_npos`](#stv_npos--stv_begin--stv_end-macros) if they are identical. If one view is a prefix of the other, returns the length of the shorter view.
 
 Example:
 ```c
@@ -1014,9 +974,7 @@ size_t pos = stv_firstDiff(stv_literal("abc"), stv_literal("abx"), false); // 2
 ```c
 size_t stv_lastDiff(strview stv_left, strview stv_right, bool nocase);
 ```
-Finds the index of the last differing byte. Returns [`stv_npos`](#stv_npos--stv_begin--stv_end-macros) if the views are identical.
-
-If one view is a suffix of the other, returns the index (relative to the longer view) of the first difference from the right.
+Finds the index of the last differing byte from right to left. Returns [`stv_npos`](#stv_npos--stv_begin--stv_end-macros) if the views are identical. If one view is a suffix of the other, returns the index (relative to the longer view) of the first difference from the right.
 
 Example:
 ```c
@@ -1032,6 +990,25 @@ size_t pos = stv_lastDiff(stv_literal("hello"), stv_literal("hella"), false); //
 | Return | Description                              |
 |--------|------------------------------------------|
 | Index  | Position of last difference (longer‑view‑based) |
+
+### `stv_length`
+```c
+size_t stv_length(strview stv);
+```
+Returns the byte length of the view. Returns 0 if `stv.data` is NULL; otherwise returns `stv.len`.
+
+Example:
+```c
+size_t len = stv_length(stv_literal("hello")); // 5
+```
+
+| Parameter | Description |
+|-----------|-------------|
+| `stv`     | Source view |
+
+| Return | Description               |
+|--------|---------------------------|
+| Length | Byte length of the view   |
 
 ### `stv_compare`
 ```c
@@ -1050,97 +1027,94 @@ int res = stv_compare(stv_literal("abc"), stv_literal("abd")); // < 0
 | 0         | Equal               |
 | Positive  | `left` > `right`    |
 
-### `stv_compareNocase`
+### `stv_compareEx`
 ```c
-int stv_compareNocase(strview stv_left, strview stv_right);
+int stv_compareEx(strview stv_left, strview stv_right, bool nocase);
 ```
-Case‑insensitive lexicographic comparison. Same parameter and return value conventions as [`stv_compare`](#stv_compare).
+Lexicographically compares two views, optionally ignoring ASCII letter case. When `nocase` is true, ASCII letters are folded to lowercase before comparison.
 
 Example:
 ```c
-int res = stv_compareNocase(stv_literal("abc"), stv_literal("ABC")); // 0
+int res = stv_compareEx(stv_literal("abc"), stv_literal("ABC"), true); // 0
 ```
+
+| Parameter    | Description                     |
+|--------------|---------------------------------|
+| `stv_left`   | Left view                       |
+| `stv_right`  | Right view                      |
+| `nocase`     | If true, ignore ASCII letter case |
+
+| Return    | Meaning             |
+|-----------|---------------------|
+| Negative  | `left` < `right`    |
+| 0         | Equal               |
+| Positive  | `left` > `right`    |
 
 ### `stv_startsWith`
 ```c
-bool stv_startsWith(strview stv_text, strview stv_pat);
+bool stv_startsWith(strview stv_text, strview stv_pat, bool nocase);
 ```
 Checks whether `stv_text` starts with `stv_pat`. An empty pattern always returns `true`.
 
 Example:
 ```c
-bool starts = stv_startsWith(stv_literal("hello world"), stv_literal("hello")); // true
+bool starts = stv_startsWith(stv_literal("hello world"), stv_literal("hello"), false); // true
 ```
+
+| Parameter   | Description                     |
+|-------------|---------------------------------|
+| `stv_text`  | Text view                       |
+| `stv_pat`   | Prefix pattern                  |
+| `nocase`    | If true, ignore ASCII letter case |
 
 | Return  | Meaning                 |
 |---------|-------------------------|
 | `true`  | Starts with the prefix  |
 | `false` | Does not                |
 
-### `stv_startsWithNocase`
-```c
-bool stv_startsWithNocase(strview stv_text, strview stv_pat);
-```
-Case‑insensitive prefix check. Same parameter and return value conventions as [`stv_startsWith`](#stv_startswith).
-
-Example:
-```c
-bool starts = stv_startsWithNocase(stv_literal("Hello"), stv_literal("hello")); // true
-```
-
 ### `stv_endsWith`
 ```c
-bool stv_endsWith(strview stv_text, strview stv_pat);
+bool stv_endsWith(strview stv_text, strview stv_pat, bool nocase);
 ```
 Checks whether `stv_text` ends with `stv_pat`. An empty pattern always returns `true`.
 
 Example:
 ```c
-bool ends = stv_endsWith(stv_literal("document.txt"), stv_literal(".txt")); // true
+bool ends = stv_endsWith(stv_literal("document.txt"), stv_literal(".txt"), false); // true
 ```
+
+| Parameter   | Description                     |
+|-------------|---------------------------------|
+| `stv_text`  | Text view                       |
+| `stv_pat`   | Suffix pattern                  |
+| `nocase`    | If true, ignore ASCII letter case |
 
 | Return  | Meaning                |
 |---------|------------------------|
 | `true`  | Ends with the suffix   |
 | `false` | Does not               |
 
-### `stv_endsWithNocase`
-```c
-bool stv_endsWithNocase(strview stv_text, strview stv_pat);
-```
-Case‑insensitive suffix check. Same parameter and return value conventions as [`stv_endsWith`](#stv_endswith).
-
-Example:
-```c
-bool ends = stv_endsWithNocase(stv_literal("FILE.TXT"), stv_literal(".txt")); // true
-```
-
 ### `stv_contains`
 ```c
-bool stv_contains(strview stv_text, strview stv_sub);
+bool stv_contains(strview stv_text, strview stv_sub, bool nocase);
 ```
-Checks whether `stv_sub` appears in `stv_text`. An empty pattern is always considered to be contained. Internally calls [`stv_search`](#stv_search).
+Checks whether `stv_sub` appears in `stv_text`. An empty substring is always considered contained. Internally calls [`stv_search`](#stv_search).
 
 Example:
 ```c
-bool found = stv_contains(stv_literal("hello world"), stv_literal("lo wo")); // true
+bool found = stv_contains(stv_literal("hello world"), stv_literal("lo wo"), false); // true
 ```
+
+| Parameter   | Description                     |
+|-------------|---------------------------------|
+| `stv_text`  | Text view                       |
+| `stv_sub`   | Substring view                  |
+| `nocase`    | If true, ignore ASCII letter case |
 
 | Return  | Meaning               |
 |---------|-----------------------|
 | `true`  | Contains the substring |
 | `false` | Does not              |
-
-### `stv_containsNocase`
-```c
-bool stv_containsNocase(strview stv_text, strview stv_sub);
-```
-Case‑insensitive containment check. Same parameter and return value conventions as [`stv_contains`](#stv_contains).
-
-Example:
-```c
-bool found = stv_containsNocase(stv_literal("Hello World"), stv_literal("world")); // true
-```
 
 ### `stv_equal`
 ```c
@@ -1158,16 +1132,27 @@ bool eq = stv_equal(stv_literal("hello"), stv_literal("hello")); // true
 | `true`  | Content equal |
 | `false` | Not equal     |
 
-### `stv_equalNocase`
+### `stv_equalEx`
 ```c
-bool stv_equalNocase(strview stv_left, strview stv_right);
+bool stv_equalEx(strview stv_left, strview stv_right, bool nocase);
 ```
-Case‑insensitive equality check. Internally calls [`stv_firstDiff`](#stv_firstdiff) with `nocase = true`. Return value conventions are the same as [`stv_equal`](#stv_equal).
+Checks whether two views have identical content, optionally ignoring ASCII letter case. Internally calls [`stv_firstDiff`](#stv_firstdiff).
 
 Example:
 ```c
-bool eq = stv_equalNocase(stv_literal("ABC"), stv_literal("abc")); // true
+bool eq = stv_equalEx(stv_literal("ABC"), stv_literal("abc"), true); // true
 ```
+
+| Parameter    | Description                     |
+|--------------|---------------------------------|
+| `stv_left`   | Left view                       |
+| `stv_right`  | Right view                      |
+| `nocase`     | If true, ignore ASCII letter case |
+
+| Return  | Meaning       |
+|---------|---------------|
+| `true`  | Content equal |
+| `false` | Not equal     |
 
 ### `stv_same`
 ```c
@@ -1210,26 +1195,68 @@ bool empty = stv_empty(stv_nullstv); // true
 
 ### `stv_count` (Macro)
 ```c
-#define stv_count(stv, target) /* ... */
+#define stv_count(stv, target) \
+    _Generic((target), int: stv_countCh, char: stv_countCh, stv_charClassFn: stv_countIf, strview: stv_countChs)( \
+        (stv), (target))
 ```
-Counts the number of matching characters (or substrings).
+Counts the number of matching characters (or substrings). C11 `_Generic` macro, dispatches based on `target` type:
 
-C11 `_Generic` macro. Dispatches based on `target` type:
-- `stv_charClassFn` -> [`stv_countIf`](#stv_countif)
-- `char` -> [`stv_countChar`](#stv_countchar)
-- `strview` -> [`stv_countSubstr`](#stv_countsubstr)
+- `int` / `char` → [`stv_countCh`](#stv_countch)
+- `stv_charClassFn` → [`stv_countIf`](#stv_countif)
+- `strview` → [`stv_countChs`](#stv_countchs)
 
 Example:
 ```c
 size_t n = stv_count(stv_literal("hello"), 'l'); // 2
-size_t m = stv_count(stv_literal("ababa"), stv_literal("aba")); // 1
+size_t m = stv_count(stv_literal("abc123"), isdigit); // 3
+size_t k = stv_count(stv_literal("abc123"), stv_literal("0123456789")); // 3
 ```
+
+### `stv_countCh`
+```c
+size_t stv_countCh(strview stv, char ch);
+```
+Counts occurrences of the character `ch`. Returns 0 if the view is empty.
+
+Example:
+```c
+size_t cnt = stv_countCh(stv_literal("hello"), 'l'); // 2
+```
+
+| Parameter | Description           |
+|-----------|-----------------------|
+| `stv`     | Source view           |
+| `ch`      | Character to count    |
+
+| Return | Description     |
+|--------|-----------------|
+| Count  | Occurrence count |
+
+### `stv_countChs`
+```c
+size_t stv_countChs(strview stv, strview charset);
+```
+Counts characters in `stv` that appear in `charset`. Returns 0 if `stv` is empty or `charset` is empty.
+
+Example:
+```c
+size_t cnt = stv_countChs(stv_literal("abc123"), stv_literal("0123456789")); // 3
+```
+
+| Parameter  | Description        |
+|------------|--------------------|
+| `stv`      | Source view        |
+| `charset`  | Character set view |
+
+| Return | Description     |
+|--------|-----------------|
+| Count  | Matching count  |
 
 ### `stv_countIf`
 ```c
 size_t stv_countIf(strview stv, stv_charClassFn handle);
 ```
-Counts the number of characters satisfying `handle`. Returns [`stv_npos`](#stv_npos--stv_begin--stv_end-macros) if the view is empty or `handle` is NULL.
+Counts characters satisfying `handle`. Returns 0 if the view is empty or `handle` is NULL.
 
 > For the character classification type, see [`stv_charClassFn`](#stv_charclassfn).
 
@@ -1238,103 +1265,196 @@ Example:
 size_t digits = stv_countIf(stv_literal("abc123"), isdigit); // 3
 ```
 
-### `stv_countChar`
-```c
-size_t stv_countChar(strview stv, const char ch);
-```
-Counts occurrences of the character `ch`. Returns [`stv_npos`](#stv_npos--stv_begin--stv_end-macros) if the view is empty.
+| Parameter | Description                     |
+|-----------|---------------------------------|
+| `stv`     | Source view                     |
+| `handle`  | Character classification function |
 
-Example:
-```c
-size_t cnt = stv_countChar(stv_literal("hello"), 'l'); // 2
-```
+| Return | Description     |
+|--------|-----------------|
+| Count  | Matching count  |
 
 ### `stv_countSubstr`
 ```c
 size_t stv_countSubstr(strview stv, strview sub);
 ```
-Counts non‑overlapping occurrences of the substring `sub`. Returns [`stv_npos`](#stv_npos--stv_begin--stv_end-macros) if the view is empty.
-
-If `sub` is an empty view, returns `stv.len`.
+Counts non‑overlapping occurrences of the substring `sub`. Returns 0 if `stv` is empty. If `sub` is an empty view, returns `stv.len`.
 
 Example:
 ```c
 size_t cnt = stv_countSubstr(stv_literal("abcabcdeabcabed"), stv_literal("abc")); // 3
 ```
 
+| Parameter | Description        |
+|-----------|--------------------|
+| `stv`     | Source view        |
+| `sub`     | Substring to count |
+
+| Return | Description           |
+|--------|-----------------------|
+| Count  | Non‑overlapping count |
+
 ### `stv_every` (Macro)
 ```c
-#define stv_every(stv, target) /* ... */
+#define stv_every(stv, target) \
+    _Generic((target), int: stv_everyCh, char: stv_everyCh, stv_charClassFn: stv_everyIf, strview: stv_everyChs)( \
+        (stv), (target))
 ```
-Checks whether all characters satisfy a condition.
+Checks whether all characters satisfy a condition. C11 `_Generic` macro, dispatches based on `target` type:
 
-C11 `_Generic` macro. Dispatches based on `target` type:
-- `stv_charClassFn` -> [`stv_everyIf`](#stv_everyif)
-- `char` -> [`stv_everyChar`](#stv_everychar)
+- `int` / `char` → [`stv_everyCh`](#stv_everych)
+- `stv_charClassFn` → [`stv_everyIf`](#stv_everyif)
+- `strview` → [`stv_everyChs`](#stv_everychs)
+
+An empty view always returns `false`.
 
 Example:
 ```c
 bool all_a = stv_every(stv_literal("aaa"), 'a'); // true
 ```
 
+### `stv_everyCh`
+```c
+bool stv_everyCh(strview stv, char ch);
+```
+Checks whether every character equals `ch`. Returns `false` if the view is empty.
+
+Example:
+```c
+bool all_a = stv_everyCh(stv_literal("aaaa"), 'a'); // true
+```
+
+| Parameter | Description           |
+|-----------|-----------------------|
+| `stv`     | Source view           |
+| `ch`      | Character to compare  |
+
+| Return  | Meaning                         |
+|---------|---------------------------------|
+| `true`  | Non‑empty and all equal to `ch` |
+| `false` | Otherwise                       |
+
+### `stv_everyChs`
+```c
+bool stv_everyChs(strview stv, strview charset);
+```
+Checks whether every character belongs to `charset`. Returns `false` if the view is empty or `charset` is empty.
+
+Example:
+```c
+bool all_digits = stv_everyChs(stv_literal("12345"), stv_literal("0123456789")); // true
+```
+
+| Parameter  | Description        |
+|------------|--------------------|
+| `stv`      | Source view        |
+| `charset`  | Character set view |
+
+| Return  | Meaning                         |
+|---------|---------------------------------|
+| `true`  | Non‑empty and all in `charset`  |
+| `false` | Otherwise                       |
+
 ### `stv_everyIf`
 ```c
 bool stv_everyIf(strview stv, stv_charClassFn handle);
 ```
-Returns `true` if all characters satisfy `handle`. Returns `false` if the view is empty or `handle` is NULL. Internally calls [`stv_countIf`](#stv_countif).
+Checks whether every character satisfies `handle`. Returns `false` if the view is empty or `handle` is NULL.
 
 Example:
 ```c
 bool all_digits = stv_everyIf(stv_literal("12345"), isdigit); // true
 ```
 
-### `stv_everyChar`
-```c
-bool stv_everyChar(strview stv, const char ch);
-```
-Returns `true` if every character equals `ch`. Returns `false` if the view is empty. Internally calls [`stv_countChar`](#stv_countchar).
+| Parameter | Description                     |
+|-----------|---------------------------------|
+| `stv`     | Source view                     |
+| `handle`  | Character classification function |
 
-Example:
-```c
-bool all_a = stv_everyChar(stv_literal("aaaa"), 'a'); // true
-```
+| Return  | Meaning                         |
+|---------|---------------------------------|
+| `true`  | Non‑empty and all satisfy `handle` |
+| `false` | Otherwise                       |
 
 ### `stv_some` (Macro)
 ```c
-#define stv_some(stv, target) /* ... */
+#define stv_some(stv, target) \
+    _Generic((target), int: stv_someCh, char: stv_someCh, stv_charClassFn: stv_someIf, strview: stv_someChs)( \
+        (stv), (target))
 ```
-Checks whether at least one character satisfies a condition.
+Checks whether at least one character satisfies a condition. C11 `_Generic` macro, dispatches based on `target` type:
 
-C11 `_Generic` macro. Dispatches based on `target` type:
-- `stv_charClassFn` -> [`stv_someIf`](#stv_someif)
-- `char` -> [`stv_someChar`](#stv_somechar)
+- `int` / `char` → [`stv_someCh`](#stv_somech)
+- `stv_charClassFn` → [`stv_someIf`](#stv_someif)
+- `strview` → [`stv_someChs`](#stv_somechs)
 
 Example:
 ```c
 bool has_digit = stv_some(stv_literal("abc1"), isdigit); // true
 ```
 
+### `stv_someCh`
+```c
+bool stv_someCh(strview stv, char ch);
+```
+Checks whether at least one character equals `ch`. Returns `false` if the view is empty.
+
+Example:
+```c
+bool has_e = stv_someCh(stv_literal("hello"), 'e'); // true
+```
+
+| Parameter | Description           |
+|-----------|-----------------------|
+| `stv`     | Source view           |
+| `ch`      | Character to search   |
+
+| Return  | Meaning                         |
+|---------|---------------------------------|
+| `true`  | Non‑empty and at least one equals `ch` |
+| `false` | Otherwise                       |
+
+### `stv_someChs`
+```c
+bool stv_someChs(strview stv, strview charset);
+```
+Checks whether at least one character belongs to `charset`. Returns `false` if the view is empty.
+
+Example:
+```c
+bool has_digit = stv_someChs(stv_literal("abc1"), stv_literal("0123456789")); // true
+```
+
+| Parameter  | Description        |
+|------------|--------------------|
+| `stv`      | Source view        |
+| `charset`  | Character set view |
+
+| Return  | Meaning                         |
+|---------|---------------------------------|
+| `true`  | Non‑empty and at least one in `charset` |
+| `false` | Otherwise                       |
+
 ### `stv_someIf`
 ```c
 bool stv_someIf(strview stv, stv_charClassFn handle);
 ```
-Returns `true` if any character satisfies `handle`. Returns `false` if the view is empty or `handle` is NULL. Internally calls [`stv_countIf`](#stv_countif).
+Checks whether at least one character satisfies `handle`. Returns `false` if the view is empty or `handle` is NULL.
 
 Example:
 ```c
 bool has_digit = stv_someIf(stv_literal("abc1"), isdigit); // true
 ```
 
-### `stv_someChar`
-```c
-bool stv_someChar(strview stv, const char ch);
-```
-Returns `true` if any character equals `ch`. Returns `false` if the view is empty. Internally calls [`stv_countChar`](#stv_countchar).
+| Parameter | Description                     |
+|-----------|---------------------------------|
+| `stv`     | Source view                     |
+| `handle`  | Character classification function |
 
-Example:
-```c
-bool has_e = stv_someChar(stv_literal("hello"), 'e'); // true
-```
+| Return  | Meaning                         |
+|---------|---------------------------------|
+| `true`  | Non‑empty and at least one satisfies `handle` |
+| `false` | Otherwise                       |
 
 ---
 
@@ -1375,31 +1495,36 @@ char c = stv_at(stv_literal("Hello"), 1); // 'e'
 
 ### `stv_forEach`
 ```c
-void stv_forEach(strview stv, stv_forEachFn callback);
+void stv_forEach(strview stv, stv_forEachFn callback, void* ctx);
 ```
-Iterates over each character, calling `callback`. No operation if the view is empty or `callback` is NULL.
+Iterates over each character, calling `callback`. No operation if the view is empty or `callback` is NULL. `ctx` is passed through unchanged.
 
 > For the callback type, see [`stv_forEachFn`](#stv_foreachfn).
 
 Example:
 ```c
-void print(char ch, size_t idx, strview ctx) {
-  printf("%c", ch);
+void print(char ch, size_t idx, void* ctx) {
+    (void)idx; (void)ctx;
+    printf("%c", ch);
 }
-stv_forEach(stv_literal("abc"), print); // prints "abc"
+stv_forEach(stv_literal("abc"), print, NULL); // prints "abc"
 ```
+
+| Parameter   | Description                     |
+|-------------|---------------------------------|
+| `stv`       | Source view                     |
+| `callback`  | Callback function               |
+| `ctx`       | User context pointer, may be NULL |
 
 ### `stv_forEachRev`
 ```c
-void stv_forEachRev(strview stv, stv_forEachFn callback);
+void stv_forEachRev(strview stv, stv_forEachFn callback, void* ctx);
 ```
-Reverse iteration. Parameters and usage are the same as [`stv_forEach`](#stv_foreach).
-
-> For the callback type, see [`stv_forEachFn`](#stv_foreachfn).
+Reverse iteration. Parameters and usage are the same as [`stv_forEach`](#stv_foreach). Indexes are passed in descending order.
 
 Example:
 ```c
-stv_forEachRev(stv_literal("abc"), print); // prints "cba"
+stv_forEachRev(stv_literal("abc"), print, NULL); // prints "cba"
 ```
 
 ### `stv_swap`
@@ -1431,7 +1556,7 @@ size_t h = stv_hash(stv_literal("hello"));
 ```c
 size_t stv_hash_FNV1a(strview stv);
 ```
-FNV‑1a hash. Automatically selects the 16‑, 32‑, or 64‑bit variant based on `SIZE_MAX`. Returns 0 on unsupported platforms.
+FNV‑1a hash. Automatically selects the 16‑, 32‑, or 64‑bit variant based on `SIZE_MAX`. Returns 0 on unsupported platforms or for an empty view.
 
 Example:
 ```c
@@ -1446,6 +1571,8 @@ size_t h = stv_hash_FNV1a(stv_literal("hello"));
 ```
 Format a view for `printf`. `stv_PFARG` generates the length and pointer arguments; use with `stv_PFFMT`. The length is capped at `INT_MAX`.
 
+> The `stv` argument is evaluated multiple times; pass a simple variable or lvalue, never an expression with side effects.
+
 Example:
 ```c
 printf("[" stv_PFFMT "]\n", stv_PFARG(myview));
@@ -1453,14 +1580,16 @@ printf("[" stv_PFFMT "]\n", stv_PFARG(myview));
 
 ### `stv_LIST` (Macro)
 ```c
-#define stv_LIST(...) ((strview[]){__VA_ARGS__}), (sizeof((strview[]){__VA_ARGS__}) / sizeof(strview))
+#ifndef __cplusplus
+    #define stv_LIST(...) ((strview[]){__VA_ARGS__}), (sizeof((strview[]){__VA_ARGS__}) / sizeof(strview))
+#endif
 ```
-Creates an array of views and provides its element count. Used with [`stv_opt_join`](#stv_opt_join).
+Creates an array of views and provides its element count. Used with [`stv_join`](#stv_join). Available in C only.
 
 Example:
 ```c
 strview sv1 = stv_literal("a"), sv2 = stv_literal("b");
-stv_opt_join(stv_LIST(sv1, sv2), buf, sizeof(buf), sep, opts);
+stv_join(stv_LIST(sv1, sv2), buf, sizeof(buf), sep, opts);
 ```
 
 ### `stv_npos / stv_begin / stv_end` (macros)
@@ -1476,66 +1605,52 @@ stv_opt_join(stv_LIST(sv1, sv2), buf, sizeof(buf), sep, opts);
 
 ### `stv_cstr`
 ```c
-char* stv_cstr(strview stv, char* mem, size_t size);
+char* stv_cstr(strview stv, char* mem, size_t size, stv_cstrOptions opts);
 ```
-String output. Copies the view content into `mem` and appends a null terminator. The buffer must provide at least `stv.len + 1` bytes.
+Writes the view into `mem` and appends a null terminator. Copies at most `size - 1` bytes and applies transformations according to `opts`.
+
+Overflow behaviour:
+- If `stv_Truncate` is set, the output is silently truncated to fit the buffer, and `mem` is returned.
+- Otherwise the function returns `NULL` without writing anything.
+
+Transformation options are described in [`stv_cstrOptions`](#stv_cstroptions).
 
 Example:
 ```c
 char buf[6];
-strview sv = stv_literal("   Hello   ");
-stv_cstr(stv_trimChs(sv, stv_whitespace), buf, sizeof(buf));
-// buf = "Hello"
+strview sv = stv_literal("Hello");
+stv_cstr(sv, buf, sizeof(buf), stv_Default); // buf = "Hello"
+stv_cstr(sv, buf, sizeof(buf), stv_Reverse); // buf = "olleH"
+stv_cstr(sv, buf, sizeof(buf), (stv_cstrOptions)(stv_Reverse | stv_ToUpper)); // buf = "OLLEH"
 ```
 
-| Parameter | Description                    |
-|-----------|--------------------------------|
-| `stv`     | Source view                    |
-| `mem`     | Destination buffer (not NULL)  |
-| `size`    | Buffer size in bytes           |
+| Parameter | Description                                   |
+|-----------|-----------------------------------------------|
+| `stv`     | Source view                                   |
+| `mem`     | Destination buffer (must not be NULL)         |
+| `size`    | Buffer size in bytes (must be at least 1)     |
+| `opts`    | Bitwise combination of [`stv_cstrOptions`](#stv_cstroptions) |
 
-| Return  | Description                                         |
-|---------|-----------------------------------------------------|
-| `mem`   | NULL if buffer is too small or `mem` is NULL         |
+| Return  | Description                                                         |
+|---------|---------------------------------------------------------------------|
+| `mem`   | Success                                                             |
+| NULL    | `mem` is NULL, `size` is 0, or output does not fit and `stv_Truncate` is not set |
 
-### `stv_opt_cstr`
+### `stv_join`
 ```c
-char* stv_opt_cstr(strview stv, char* mem, size_t size, stv_cstrOptions opts);
+char* stv_join(strview stv_arr[], size_t arr_len, char* mem, size_t size, strview sep, stv_cstrOptions opts);
 ```
-String output with transformations. Copies the view content into `mem` and appends a null terminator. The buffer must provide at least `stv.len + 1` bytes.
+Joins all views in `stv_arr` with separator `sep` and writes the result into `mem`, appending a null terminator. Each element may be transformed according to `opts`.
 
-> For available options, see [`stv_cstrOptions`](#stv_cstroptions).
+If the array is empty, an empty string is written (buffer must have at least 1 byte).
 
-Example:
-```c
-char buf[6];
-stv_opt_cstr(stv_literal("Hello"), buf, 6, stv_Reverse | stv_ToUpper); // "OLLEH"
-```
-
-| Parameter | Description                      |
-|-----------|----------------------------------|
-| `stv`     | Source view                      |
-| `mem`     | Destination buffer (not NULL)    |
-| `size`    | Buffer size in bytes             |
-| `opts`    | Bitwise combination of options   |
-
-| Return  | Description                                         |
-|---------|-----------------------------------------------------|
-| `mem`   | NULL if buffer is too small or `mem` is NULL         |
-
-### `stv_opt_join`
-```c
-char* stv_opt_join(strview stv_arr[], size_t arr_len, char* mem, size_t size, strview sep, stv_cstrOptions opts);
-```
-Joins multiple views with a separator `sep` and writes the result into `mem`, appending a null terminator.
-
-> The separator `sep` is not affected by the transformation options.
+Options are described in [`stv_cstrOptions`](#stv_cstroptions). `stv_JoinReverse` reverses the element iteration order; `stv_ViewReverse` applies to each element independently; `stv_Reverse` applies to the whole joined result.
 
 Example:
 ```c
 strview arr[] = {stv_literal("Hello"), stv_literal("World")};
 char buf[20];
-stv_opt_join(arr, 2, buf, sizeof(buf), stv_literal(", "), stv_Default);
+stv_join(arr, 2, buf, sizeof(buf), stv_literal(", "), stv_Default);
 // buf = "Hello, World"
 ```
 
@@ -1543,30 +1658,78 @@ stv_opt_join(arr, 2, buf, sizeof(buf), stv_literal(", "), stv_Default);
 |------------|------------------------------------------------------|
 | `stv_arr`  | Array of views (may be NULL only if `arr_len == 0`)  |
 | `arr_len`  | Number of elements                                   |
-| `mem`      | Destination buffer (not NULL)                        |
+| `mem`      | Destination buffer (must not be NULL)                |
 | `size`     | Buffer size in bytes                                 |
-| `sep`      | Separator view                                       |
+| `sep`      | Separator view (may be empty)                        |
 | `opts`     | Transformation options applied to each element       |
 
-| Return  | Description                                         |
-|---------|-----------------------------------------------------|
-| `mem`   | NULL if buffer is too small or `mem` is NULL         |
+| Return  | Description                                                         |
+|---------|---------------------------------------------------------------------|
+| `mem`   | Success; output may be truncated if `stv_Truncate` is set           |
+| NULL    | `mem` is NULL, `size` is 0, or buffer is too small and `stv_Truncate` is not set |
 
 ---
 
 ## Number Parsing
 
+### `stv_ch2digit`
+```c
+int stv_ch2digit(char ch);
+```
+Converts a `[0-9A-Za-z]` character to its base‑36 digit value. Returns ‑1 for invalid characters.
+
+Example:
+```c
+int d1 = stv_ch2digit('5');   // 5
+int d2 = stv_ch2digit('B');   // 11
+int d3 = stv_ch2digit('!');   // -1
+```
+
+| Parameter | Description          |
+|-----------|----------------------|
+| `ch`      | Character to convert |
+
+| Return | Description                  |
+|--------|------------------------------|
+| Digit  | 0‑35; ‑1 for invalid input   |
+
+### `stv_parseIntBase`
+```c
+int stv_parseIntBase(strview stv, strview* remaining);
+```
+Detects and skips the base prefix, returning the detected base. The remainder after the prefix is stored in `*remaining`. Returns 0 for an empty view.
+
+Supported prefixes:
+- `0b` / `0B` → binary (base 2)
+- `0o` / `0O` → octal (base 8)
+- `0d` / `0D` → decimal (base 10)
+- `0x` / `0X` → hexadecimal (base 16)
+
+If no prefix is detected, the base defaults to 10 and the view is not consumed. A lone `'0'` without a recognised prefix is treated as decimal and is not consumed.
+
+Example:
+```c
+strview rem;
+int base = stv_parseIntBase(stv_literal("0xFF"), &rem);
+// base = 16, rem = "FF"
+```
+
+| Parameter   | Description                           |
+|-------------|---------------------------------------|
+| `stv`       | Input view                            |
+| `remaining` | Output for the remainder (may be NULL)|
+
+| Return | Description                  |
+|--------|------------------------------|
+| Base   | 2/8/10/16; 0 for empty view  |
+
 ### `stv_parseInum`
 ```c
 intmax_t stv_parseInum(strview stv, int base, strview* remaining);
 ```
-Parses a signed integer. Skips leading whitespace, handles an optional `+`/`-`, and supports leading zeros.
+Parses a signed integer. Skips leading whitespace, handles an optional `+`/`-`, and then parses digits in the specified base. If `base` is 0, it is auto‑detected via [`stv_parseIntBase`](#stv_parseintbase).
 
-Supports bases 2‑36, or automatic detection via prefix (`base = 0`).
-
-On overflow, returns `INTMAX_MAX`/`INTMAX_MIN` and consumes all digits.
-
-> For prefix detection rules, see [`stv_parseIntBase`](#stv_parseintbase).
+Overflows are clamped to `INTMAX_MAX` / `INTMAX_MIN` and the remaining view is updated. Returns 0 if no digits are found or `base` is invalid.
 
 Example:
 ```c
@@ -1589,13 +1752,9 @@ intmax_t val = stv_parseInum(stv_literal("-42"), 10, &rem);
 ```c
 uintmax_t stv_parseUnum(strview stv, int base, strview* remaining);
 ```
-Parses an unsigned integer. Skips leading whitespace, handles an optional `+`/`-`, and supports leading zeros.
+Parses an unsigned integer. Skips leading whitespace, handles an optional `+`/`-`, and then parses digits in the specified base. If `base` is 0, it is auto‑detected via [`stv_parseIntBase`](#stv_parseintbase).
 
-Supports bases 2‑36, or automatic detection via prefix (`base = 0`).
-
-Negative values are converted using modular arithmetic (e.g., `-40` -> `UINTMAX_MAX - 39`). On overflow, returns `UINTMAX_MAX` and consumes all digits.
-
-> For prefix detection rules, see [`stv_parseIntBase`](#stv_parseintbase).
+Negative values are converted using modular arithmetic (e.g., `-40` → `UINTMAX_MAX - 39`). Overflows are clamped to `UINTMAX_MAX` and the remaining view is updated. Returns 0 if no digits are found or `base` is invalid.
 
 Example:
 ```c
@@ -1613,58 +1772,3 @@ uintmax_t val = stv_parseUnum(stv_literal("0xFF"), 0, &rem);
 | Return      | Description                                  |
 |-------------|----------------------------------------------|
 | Parsed value| 0 if no digits or invalid base                |
-
-### `stv_ch2digit`
-```c
-int stv_ch2digit(char ch);
-```
-Converts a `[0-9A-Za-z]` character to its base‑36 digit value. Returns ‑1 for invalid characters.
-
-Used internally by [`stv_parseInum`](#stv_parseinum) and [`stv_parseUnum`](#stv_parseunum).
-
-Example:
-```c
-int d1 = stv_ch2digit('5');   // 5
-int d2 = stv_ch2digit('B');   // 11
-int d3 = stv_ch2digit('!');   // -1
-```
-
-| Parameter | Description          |
-|-----------|----------------------|
-| `ch`      | Character to convert |
-
-| Return | Description                  |
-|--------|------------------------------|
-| Digit  | 0‑36; ‑1 for invalid input   |
-
-### `stv_parseIntBase`
-```c
-int stv_parseIntBase(strview stv, strview* remaining);
-```
-Detects and skips the base prefix, returning the detected base. The remainder after the prefix is stored in `*remaining`. Returns 0 for an empty view.
-
-If no prefix is detected, the base defaults to 10 and the view is not consumed.
-
-Used internally by [`stv_parseInum`](#stv_parseinum) and [`stv_parseUnum`](#stv_parseunum).
-
-Prefix detection rules:
-- `0B`/`0b` -> binary (base 2)
-- `0O`/`0o` -> octal (base 8)
-- `0D`/`0d` -> decimal (base 10)
-- `0X`/`0x` -> hexadecimal (base 16)
-
-Example:
-```c
-strview rem;
-int base = stv_parseIntBase(stv_literal("0xFF"), &rem);
-// base = 16, rem = "FF"
-```
-
-| Parameter   | Description                           |
-|-------------|---------------------------------------|
-| `stv`       | Input view                            |
-| `remaining` | Output for the remainder (may be NULL)|
-
-| Return | Description                  |
-|--------|------------------------------|
-| Base   | 2/8/10/16; 0 for empty view  |

@@ -11,7 +11,7 @@ void test_stv_split_normal(void) {
     strview stv = stv_literal("hello world");
     strview sep = stv_literal(" ");
     strview rem;
-    strview first = stv_split(stv, sep, false, &rem);
+    strview first = stv_split(stv, sep, &rem, false);
     TEST_ASSERT_EQUAL_size_t(5, first.len);
     TEST_ASSERT_EQUAL_CHAR_ARRAY("hello", first.data, 5);
     TEST_ASSERT_EQUAL_size_t(5, rem.len);
@@ -22,7 +22,7 @@ void test_stv_split_nocase(void) {
     strview stv = stv_literal("hello WORLD");
     strview sep = stv_literal("world");
     strview rem;
-    strview first = stv_split(stv, sep, true, &rem);
+    strview first = stv_split(stv, sep, &rem, true);
     TEST_ASSERT_EQUAL_size_t(6, first.len);
     TEST_ASSERT_EQUAL_CHAR_ARRAY("hello ", first.data, 6);
     TEST_ASSERT_TRUE(stv_empty(rem));
@@ -31,7 +31,7 @@ void test_stv_split_nocase(void) {
 void test_stv_split_not_found(void) {
     strview stv = stv_literal("hello");
     strview rem;
-    strview first = stv_split(stv, stv_literal("/"), false, &rem);
+    strview first = stv_split(stv, stv_literal("/"), &rem, false);
     TEST_ASSERT_TRUE(stv_equal(stv, first));
     TEST_ASSERT_TRUE(stv_empty(rem));
 }
@@ -39,7 +39,7 @@ void test_stv_split_not_found(void) {
 void test_stv_split_empty_sep(void) {
     strview stv = stv_literal("ab");
     strview rem;
-    strview first = stv_split(stv, stv_nullstv, false, &rem);
+    strview first = stv_split(stv, stv_nullstv, &rem, false);
     TEST_ASSERT_EQUAL_size_t(1, first.len);
     TEST_ASSERT_EQUAL_CHAR_ARRAY("a", first.data, 1);
     TEST_ASSERT_EQUAL_size_t(1, rem.len);
@@ -49,20 +49,20 @@ void test_stv_split_empty_sep(void) {
 void test_stv_split_empty_sep_single_char(void) {
     strview stv = stv_literal("a");
     strview rem;
-    strview first = stv_split(stv, stv_nullstv, false, &rem);
+    strview first = stv_split(stv, stv_nullstv, &rem, false);
     TEST_ASSERT_EQUAL_size_t(1, first.len);
     TEST_ASSERT_TRUE(stv_empty(rem));
 }
 
 void test_stv_split_null_remaining(void) {
-    strview first = stv_split(stv_literal("a,b"), stv_literal(","), false, NULL);
+    strview first = stv_split(stv_literal("a,b"), stv_literal(","), NULL, false);
     TEST_ASSERT_EQUAL_size_t(1, first.len);
 }
 
 void test_stv_split_sep_at_end(void) {
     strview stv = stv_literal("hello,");
     strview rem;
-    strview first = stv_split(stv, stv_literal(","), false, &rem);
+    strview first = stv_split(stv, stv_literal(","), &rem, false);
     TEST_ASSERT_EQUAL_size_t(5, first.len);
     TEST_ASSERT_TRUE(stv_empty(rem));
 }
@@ -70,14 +70,14 @@ void test_stv_split_sep_at_end(void) {
 void test_stv_split_sep_at_start(void) {
     strview stv = stv_literal(",world");
     strview rem;
-    strview first = stv_split(stv, stv_literal(","), false, &rem);
+    strview first = stv_split(stv, stv_literal(","), &rem, false);
     TEST_ASSERT_EQUAL_size_t(0, first.len);
     TEST_ASSERT_EQUAL_size_t(5, rem.len);
     TEST_ASSERT_EQUAL_CHAR_ARRAY("world", rem.data, 5);
 }
 
 void test_stv_split_empty_view(void) {
-    strview first = stv_split(stv_nullstv, stv_literal(","), false, NULL);
+    strview first = stv_split(stv_nullstv, stv_literal(","), NULL, false);
     TEST_ASSERT_TRUE(stv_empty(first));
 }
 
